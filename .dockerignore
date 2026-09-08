@@ -1,0 +1,10 @@
+# Contexto de build del BACKEND (context: .)
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+.git
+.github
+Frontend
+Base de datos
+*.md

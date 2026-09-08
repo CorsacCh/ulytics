@@ -1,0 +1,14 @@
+FROM node:18-bullseye
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN npm install
+
+COPY . .
+
+# Puerto interno (debe coincidir con VITE_APP_PORT del .env)
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]

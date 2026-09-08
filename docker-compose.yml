@@ -1,0 +1,51 @@
+# LOCAL — construye las imagenes y publica los puertos en localhost.
+#   Frontend -> http://localhost:3000    Backend -> http://localhost:4000
+#   Uso:  cp .env.example .env  &&  docker compose up --build
+
+services:
+  grupo0_db:
+    image: mariadb:11
+    container_name: grupo0_db
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - red_taller_software
+
+  grupo0_backend:
+    build:
+      context: .
+      dockerfile: Backend/Dockerfile
+    container_name: grupo0_backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - grupo0_db
+    ports:
+      - "4000:4000"
+    networks:
+      - red_taller_software
+
+  grupo0_frontend:
+    build:
+      context: ./Frontend
+      dockerfile: dockerfile
+    container_name: grupo0_frontend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - grupo0_backend
+    ports:
+      - "3000:3000"
+    networks:
+      - red_taller_software
+
+volumes:
+  data:
+
+networks:
+  red_taller_software:
+    driver: bridge
