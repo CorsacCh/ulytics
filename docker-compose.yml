@@ -4,32 +4,32 @@
 
 services:
   grupo0_db:
-    image: mariadb:11
-    container_name: grupo0_db
+    image: postgres
+    container_name: grupo4_db
     restart: unless-stopped
     env_file: .env
     volumes:
-      - data:/var/lib/mysql
+      - data:/var/lib/postgresql/data
     ports:
-      - "3306:3306"
+      - "5432:5432"
     networks:
       - red_taller_software
 
-  grupo0_backend:
+  grupo4_backend:
     build:
       context: .
       dockerfile: Backend/Dockerfile
-    container_name: grupo0_backend
+    container_name: grupo4_backend
     restart: unless-stopped
     env_file: .env
     depends_on:
-      - grupo0_db
+      - grupo4_db
     ports:
-      - "4000:4000"
+      - "4000:4004"
     networks:
       - red_taller_software
 
-  grupo0_frontend:
+  grupo4_frontend:
     build:
       context: ./Frontend
       dockerfile: dockerfile
@@ -37,9 +37,9 @@ services:
     restart: unless-stopped
     env_file: .env
     depends_on:
-      - grupo0_backend
+      - grupo4_backend
     ports:
-      - "3000:3000"
+      - "3000:3004"
     networks:
       - red_taller_software
 
