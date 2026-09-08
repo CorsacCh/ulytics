@@ -9,33 +9,33 @@
 version: "3.8"
 
 services:
-  grupo0_db:
-    image: mariadb:11
-    container_name: grupo0_db
+  grupo4_db:
+    image: postgres:17
+    container_name: grupo4_db
     restart: unless-stopped
     env_file: .env
     volumes:
-      - data:/var/lib/mysql
+      - data:/var/lib/postgresql/data
     networks:
       - red_taller_software
 
-  grupo0_backend:
-    image: ghcr.io/mittods/plantilla_info282-backend:latest
-    container_name: grupo0_backend
+  grupo4_backend:
+    image: ghcr.io/CorsacCh/ULYTICS-backend:latest
+    container_name: grupo4_backend
     restart: unless-stopped
     env_file: .env
     depends_on:
-      - grupo0_db
+      - grupo4_db
     networks:
       - red_taller_software
 
-  grupo0_frontend:
-    image: ghcr.io/mittods/plantilla_info282-frontend:latest
-    container_name: grupo0_frontend
+  grupo4_frontend:
+    image: ghcr.io/CorsacCh/ULYTICS-frontend:latest
+    container_name: grupo4_frontend
     restart: unless-stopped
     env_file: .env
     depends_on:
-      - grupo0_backend
+      - grupo4_backend
     networks:
       - red_taller_software
 
