@@ -24,18 +24,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Backend -> ghcr.io/mittods/plantilla_info282-backend
+      - name: backend -> ghcr.io/corsacch/ulytics-backend
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Backend/Dockerfile
+          file: backend/Dockerfile
           push: true
-          tags: ghcr.io/mittods/plantilla_info282-backend:latest
+          tags: ghcr.io/corsacch/ulytics-backend:latest
 
-      - name: Frontend -> ghcr.io/mittods/plantilla_info282-frontend
+      - name: frontend -> ghcr.io/corsacch/ulytics-frontend
         uses: docker/build-push-action@v6
         with:
-          context: ./Frontend
-          file: Frontend/dockerfile
+          context: ./frontend
+          file: frontend/dockerfile
           push: true
-          tags: ghcr.io/mittods/plantilla_info282-frontend:latest
+          tags: ghcr.io/corsacch/ulytics-frontend:latest
