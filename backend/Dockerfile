@@ -5,7 +5,7 @@ FROM node:18
 WORKDIR /app
 
 # Copy package.json and package-lock.json to the working directory
-COPY Backend/package*.json ./
+COPY backend/package*.json ./
 
 # Instalar netcat (nc) para el wait-for-db.sh
 RUN apt-get update && apt-get install -y netcat-openbsd
@@ -14,10 +14,10 @@ RUN apt-get update && apt-get install -y netcat-openbsd
 RUN npm install
 
 # Copy the rest of the application code to the working directory
-COPY Backend ./
+COPY backend ./
 
 # Copiar el script para esperar la base de datos
-COPY Backend/wait-for-db.sh /wait-for-db.sh
+COPY backend/wait-for-db.sh /wait-for-db.sh
 RUN chmod +x /wait-for-db.sh
 
 # Puerto interno (debe coincidir con PORT del .env)
