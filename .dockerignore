@@ -5,6 +5,6 @@
 **/.env.*
 .git
 .github
-Frontend
-Base de datos
+frontend
+database
 *.md
