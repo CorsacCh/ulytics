@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SERVER="${SERVER:-vm166@146.83.216.166}"
-REMOTE_DIR="${REMOTE_DIR:-grupo0}"
+REMOTE_DIR="${REMOTE_DIR:-grupo4}"
 
 echo "==> Servidor: $SERVER   Carpeta: ~/$REMOTE_DIR"
 
@@ -25,4 +25,4 @@ ssh "$SERVER" "cd '$REMOTE_DIR' && docker-compose pull && docker-compose up -d"
 echo "==> Estado:"
 ssh "$SERVER" "cd '$REMOTE_DIR' && docker-compose ps"
 
-echo "==> Listo -> http://prueba.146.83.216.166.nip.io"
+echo "==> Listo -> http://grupo4.146.83.216.166.nip.io"

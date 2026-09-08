@@ -3,11 +3,11 @@
 #   Uso:  cp .env.example .env  &&  docker compose up --build
 
 services:
-  grupo0_db:
+  grupo4_db:
     image: postgres
     container_name: grupo4_db
     restart: unless-stopped
-    env_file: .env
+    env_file: database/.env
     volumes:
       - data:/var/lib/postgresql/data
     ports:
@@ -21,7 +21,7 @@ services:
       dockerfile: Backend/Dockerfile
     container_name: grupo4_backend
     restart: unless-stopped
-    env_file: .env
+    env_file: backend/.env
     depends_on:
       - grupo4_db
     ports:
@@ -33,9 +33,9 @@ services:
     build:
       context: ./Frontend
       dockerfile: dockerfile
-    container_name: grupo0_frontend
+    container_name: grupo4_frontend
     restart: unless-stopped
-    env_file: .env
+    env_file: frontend/.env
     depends_on:
       - grupo4_backend
     ports:

@@ -13,7 +13,7 @@ services:
     image: postgres:17
     container_name: grupo4_db
     restart: unless-stopped
-    env_file: .env
+    env_file: database/.env
     volumes:
       - data:/var/lib/postgresql/data
     networks:
@@ -23,7 +23,7 @@ services:
     image: ghcr.io/CorsacCh/ULYTICS-backend:latest
     container_name: grupo4_backend
     restart: unless-stopped
-    env_file: .env
+    env_file: backend/.env
     depends_on:
       - grupo4_db
     networks:
@@ -33,7 +33,7 @@ services:
     image: ghcr.io/CorsacCh/ULYTICS-frontend:latest
     container_name: grupo4_frontend
     restart: unless-stopped
-    env_file: .env
+    env_file: frontend/.env
     depends_on:
       - grupo4_backend
     networks:
