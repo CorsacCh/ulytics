@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-interface: Arial, Helvetica, sans-serif;
+    
+    /* UACh Corporativo */
+    --uach-blue: #003366;
+    --uach-light-blue: #004d99;
+    --uach-gold: #D4AF37;
+    --uach-green: #2D7C5E;
+    --uach-dark: #001a4d;
+    --bg-light: #F5F7FA;
+    --text-primary: #001a4d;
+    --text-secondary: #556B7B;
+  }
+
+  body {
+    font-family: var(--font-interface);
+    @apply bg-[#F5F7FA] text-[#001a4d];
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .font-interface {
+    font-family: var(--font-interface);
+  }
+}
