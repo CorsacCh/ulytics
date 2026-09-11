@@ -12,7 +12,7 @@ services:
   grupo4_db:
     image: postgres:17
     container_name: grupo4_db
-    restart: unless-stopped
+    restart: "no"
     env_file: database/.env
     volumes:
       - data:/var/lib/postgresql/data
