@@ -14,7 +14,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: process.env.VITE_APP_HOST || '0.0.0.0',
-    port: Number(process.env.VITE_APP_PORT) || 3000,
+    port: Number(process.env.VITE_APP_PORT) || 3004,
     // Vite >= 4.5 bloquea hosts que no sean localhost; en el servidor
     // hay que listar el subdominio (VITE_ALLOWED_HOSTS en el .env).
     allowedHosts,
