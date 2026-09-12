@@ -21,7 +21,7 @@ COPY backend/wait-for-db.sh /wait-for-db.sh
 RUN chmod +x /wait-for-db.sh
 
 # Puerto interno (debe coincidir con PORT del .env)
-EXPOSE 4000
+EXPOSE 4004
 
 # Usar el script como punto de entrada
 CMD ["/wait-for-db.sh", "npm", "start"]
