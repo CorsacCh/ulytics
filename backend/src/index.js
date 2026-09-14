@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import app from "./app.js";
-import { sequelize } from "./persintence/database/database.js";
+import { sequelize } from "./persistence/database/database.js";
 
 async function main() {
   await sequelize.sync({ force: false });

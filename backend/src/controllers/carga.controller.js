@@ -10,7 +10,7 @@ const {
   Fact_Titulacion_Grados,
   Asignatura, 
   Historial_Reprobacion 
-} = require('../persintence/models'); // Ajusta esto según cómo exportes tus modelos
+} = require('../persistence/models'); // Ajusta esto según cómo exportes tus modelos
 
 const procesarCargaExcel = async (req, res) => {
   if (!req.file) {
