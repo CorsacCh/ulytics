@@ -11,6 +11,15 @@ const app = express();
 import userRoutes from "./routes/users.routes.js";
 import paperRoutes from "./routes/papers.routes.js";
 
+//Carga de datos: 
+/*
+// Añade la importación de la nueva ruta junto a las otras (users.routes, papers.routes)
+const cargaRoutes = require('./routes/carga.routes');
+
+// Registra el endpoint (por ejemplo, bajo el prefijo /api/carga)
+app.use('/api/carga', cargaRoutes);
+*/
+
 // Middlewares
 app.use(morgan("dev"));
 app.use(express.json());
