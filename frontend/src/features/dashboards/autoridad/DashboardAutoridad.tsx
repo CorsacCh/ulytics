@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BarChart3, TrendingUp, Building2, Users, AlertCircle, GraduationCap } from 'lucide-react'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
 import type { Section } from '../../../shared/components/Sidebar'
 

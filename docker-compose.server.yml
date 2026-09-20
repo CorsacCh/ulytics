@@ -1,47 +1,61 @@
-# SERVIDOR — descarga las imagenes de GHCR, NO construye.
-# NO publica puertos: Caddy (contenedor en red_taller_software) llega por container_name:
-#   prueba.146.83.216.166.nip.io/api/*  ->  grupo0_backend:4000
-#   prueba.146.83.216.166.nip.io/*      ->  grupo0_frontend:3000
-# El .env vive SOLO en el servidor, junto a este archivo. Lo sube deploy.sh como docker-compose.yml.
-
-# version explícita: el servidor tiene un Compose viejo que la exige.
-# (Compose v2 moderno la ignora con un warning inofensivo.)
-version: "3.8"
+# SERVIDOR DEL GRUPO 4
+#
+# Descarga imágenes desde GHCR; no construye código en el servidor.
+# No publica puertos del host. El proxy compartido debe dirigir únicamente:
+#   /api/* -> grupo4_backend:4004
+#   /*     -> grupo4_frontend:3004
+#
+# Los tres archivos de entorno viven solo en el servidor:
+# database/.env, backend/.env y frontend/.env.
 
 services:
   grupo4_db:
     image: postgres:17
     container_name: grupo4_db
-    restart: "no"
-    env_file: database/.env
+    restart: unless-stopped
+    env_file:
+      - ./database/.env
     volumes:
-      - data:/var/lib/postgresql/data
+      - grupo4_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
-      - red_taller_software
+      - grupo4_internal
 
   grupo4_backend:
-    image: ghcr.io/CorsacCh/ULYTICS-backend:latest
+    image: ghcr.io/corsacch/ulytics-backend:latest
     container_name: grupo4_backend
     restart: unless-stopped
-    env_file: backend/.env
+    env_file:
+      - ./backend/.env
     depends_on:
-      - grupo4_db
+      grupo4_db:
+        condition: service_healthy
     networks:
+      - grupo4_internal
       - red_taller_software
 
   grupo4_frontend:
-    image: ghcr.io/CorsacCh/ULYTICS-frontend:latest
+    image: ghcr.io/corsacch/ulytics-frontend:latest
     container_name: grupo4_frontend
     restart: unless-stopped
-    env_file: frontend/.env
+    env_file:
+      - ./frontend/.env
     depends_on:
       - grupo4_backend
     networks:
       - red_taller_software
 
 volumes:
-  data:
+  grupo4_postgres_data:
+    name: grupo4_ulytics_postgres_data
 
 networks:
+  grupo4_internal:
+    name: grupo4_ulytics_server_network
+    driver: bridge
   red_taller_software:
     external: true

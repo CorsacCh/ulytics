@@ -15,6 +15,7 @@ dist-ssr
 # Entornos
 .env
 .env.*
+!.env.example
 
 
 

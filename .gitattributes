@@ -1,0 +1,5 @@
+# Los scripts se ejecutan en contenedores y servidores Linux.
+*.sh text eol=lf
+
+# Mantener el resto de archivos de texto normalizados por Git.
+* text=auto

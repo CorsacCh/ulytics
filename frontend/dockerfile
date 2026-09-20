@@ -4,9 +4,13 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
+
+# La construcción de la imagen valida lint, tipos y compilación.
+RUN npm run lint
+RUN npm run build
 
 # Puerto interno (debe coincidir con VITE_APP_PORT del .env)
 EXPOSE 3004

@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../database/database.js";
-import { Rol } from "./Rol.js";
 
 export const Usuario = sequelize.define("Usuario", {
   id_usuario: {
@@ -9,12 +8,11 @@ export const Usuario = sequelize.define("Usuario", {
     autoIncrement: true
   },
   nombre: {
-    type: DataTypes.STRING(100),
+    type: DataTypes.STRING(120),
     allowNull: false
   },
   email: {
-    type: DataTypes.STRING(100),
-    unique: true,
+    type: DataTypes.STRING(180),
     allowNull: false
   },
   password_hash: {
@@ -23,13 +21,25 @@ export const Usuario = sequelize.define("Usuario", {
   },
   activo: {
     type: DataTypes.BOOLEAN,
+    allowNull: false,
     defaultValue: true
+  },
+  debe_cambiar_password: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  ultimo_acceso: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  password_actualizado_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
-  tableName: 'Usuario',
-  timestamps: false
+  tableName: "usuario",
+  timestamps: true,
+  createdAt: "created_at",
+  updatedAt: "updated_at"
 });
-
-// Relación: Un Usuario pertenece a un Rol
-Rol.hasMany(Usuario, { foreignKey: 'rol_id' });
-Usuario.belongsTo(Rol, { foreignKey: 'rol_id' });

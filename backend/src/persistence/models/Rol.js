@@ -8,14 +8,26 @@ export const Rol = sequelize.define("Rol", {
     autoIncrement: true
   },
   nombre: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(80),
+    unique: true,
+    allowNull: false
+  },
+  codigo: {
+    type: DataTypes.STRING(40),
     unique: true,
     allowNull: false
   },
   descripcion: {
-    type: DataTypes.STRING(200)
+    type: DataTypes.STRING(250)
+  },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
   }
 }, {
-  tableName: 'Rol',
-  timestamps: false
+  tableName: "rol",
+  timestamps: true,
+  createdAt: "created_at",
+  updatedAt: "updated_at"
 });

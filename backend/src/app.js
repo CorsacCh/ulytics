@@ -1,40 +1,53 @@
+import "dotenv/config";
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
-import dotenv from 'dotenv';
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import authRoutes from "./routes/auth.routes.js";
+import adminUserRoutes from "./routes/admin-users.routes.js";
+import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js";
 
-//init
-dotenv.config();
 const app = express();
+const allowedOrigins = (process.env.ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
 
-// Import routes
-import userRoutes from "./routes/users.routes.js";
-import paperRoutes from "./routes/papers.routes.js";
+if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
+  throw new Error("TRUST_PROXY_HOPS debe ser un entero mayor o igual a cero.");
+}
 
-//Carga de datos: 
-/*
-// Añade la importación de la nueva ruta junto a las otras (users.routes, papers.routes)
-const cargaRoutes = require('./routes/carga.routes');
+if (trustProxyHops > 0) {
+  app.set("trust proxy", trustProxyHops);
+}
 
-// Registra el endpoint (por ejemplo, bajo el prefijo /api/carga)
-app.use('/api/carga', cargaRoutes);
-*/
-
-// Middlewares
+app.use(helmet());
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
+app.use(cookieParser());
 
-// Configura CORS
 app.use(
   cors({
-    origin: [process.env.ORIGIN],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Routes
-app.use("/api/users", userRoutes);
-app.use("/api/papers", paperRoutes);
+app.get("/api/health", (_request, response) => {
+  response.json({ status: "ok" });
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminUserRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

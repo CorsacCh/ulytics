@@ -1,51 +1,66 @@
-# LOCAL — construye las imagenes y publica los puertos en localhost.
-#   Frontend -> http://localhost:3000    Backend -> http://localhost:4000
-#   Uso:  cp .env.example .env  &&  docker compose up --build
+# LOCAL — construye las imágenes y publica únicamente puertos locales.
+#   Frontend  -> http://localhost:3004
+#   Backend   -> http://localhost:4004
+#   PostgreSQL-> localhost:5434 (solo para herramientas locales)
+#
+# Antes de levantar los servicios, crea los archivos de entorno a partir de
+# los ejemplos ubicados dentro de database/, backend/ y frontend/.
 
 services:
   grupo4_db:
-    image: postgres
+    image: postgres:17
     container_name: grupo4_db
     restart: unless-stopped
-    env_file: database/.env
+    env_file:
+      - ./database/.env
     volumes:
-      - data:/var/lib/postgresql/data
+      - grupo4_postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
-      - red_taller_software
+      - grupo4_ulytics
 
   grupo4_backend:
     build:
       context: .
-      dockerfile: Backend/Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: grupo4_backend
     restart: unless-stopped
-    env_file: backend/.env
+    env_file:
+      - ./backend/.env
     depends_on:
-      - grupo4_db
+      grupo4_db:
+        condition: service_healthy
     ports:
-      - "4000:4004"
+      - "127.0.0.1:4004:4004"
     networks:
-      - red_taller_software
+      - grupo4_ulytics
 
   grupo4_frontend:
     build:
-      context: ./Frontend
+      context: ./frontend
       dockerfile: dockerfile
     container_name: grupo4_frontend
     restart: unless-stopped
-    env_file: frontend/.env
+    env_file:
+      - ./frontend/.env
     depends_on:
       - grupo4_backend
     ports:
-      - "3000:3004"
+      - "127.0.0.1:3004:3004"
     networks:
-      - red_taller_software
+      - grupo4_ulytics
 
 volumes:
-  data:
+  grupo4_postgres_data:
+    name: grupo4_ulytics_postgres_data
 
 networks:
-  red_taller_software:
+  grupo4_ulytics:
+    name: grupo4_ulytics_network
     driver: bridge

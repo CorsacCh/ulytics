@@ -1,11 +1,16 @@
 #!/bin/sh
 
-# Espera a que el puerto 3306 del contenedor de MariaDB esté disponible
-echo "Esperando a que MariaDB esté disponible en $DB_HOST:$DB_PORT..."
+# Espera a que PostgreSQL acepte conexiones antes de iniciar la aplicación.
+set -eu
 
-while ! nc -z "$DB_HOST" "$DB_PORT"; do
+host="${DB_HOST:-grupo4_db}"
+port="${DB_PORT:-5432}"
+
+echo "Esperando PostgreSQL en $host:$port..."
+
+while ! nc -z "$host" "$port"; do
   sleep 1
 done
 
-echo "MariaDB está disponible, iniciando backend..."
+echo "PostgreSQL disponible, iniciando backend..."
 exec "$@"
