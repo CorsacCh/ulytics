@@ -49,3 +49,19 @@ export function requirePermission(permissionCode) {
     return next();
   };
 }
+
+export const authMiddleware = authenticate;
+
+export function authorize(roles = []) {
+  return (request, _response, next) => {
+    const userRoleCode = request.auth?.user?.rol?.codigo;
+    if (!userRoleCode) {
+      return next(new AppError("Acceso no autorizado.", 403, "FORBIDDEN"));
+    }
+    const match = roles.some(role => role.toUpperCase() === userRoleCode.toUpperCase());
+    if (!match) {
+      return next(new AppError("Acceso no autorizado.", 403, "FORBIDDEN"));
+    }
+    return next();
+  };
+}

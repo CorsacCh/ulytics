@@ -3,6 +3,10 @@ import { Permiso } from "./Permiso.js";
 import { AmbitoAcademico } from "./AmbitoAcademico.js";
 import { Usuario } from "./Usuario.js";
 import { AuditoriaUsuario } from "./AuditoriaUsuario.js";
+import { Macrounidad } from "./Macrounidad.js";
+import { Carrera } from "./Carrera.js";
+import { CargaDatos } from "./CargaDatos.js";
+import { FactAdmision } from "./FactAdmision.js";
 
 Rol.belongsToMany(Permiso, {
   through: { model: "rol_permiso", timestamps: false },
@@ -56,4 +60,4 @@ AuditoriaUsuario.belongsTo(Usuario, {
   as: "usuario_afectado"
 });
 
-export { Rol, Permiso, AmbitoAcademico, Usuario, AuditoriaUsuario };
+export { Rol, Permiso, AmbitoAcademico, Usuario, AuditoriaUsuario, Macrounidad, Carrera, CargaDatos, FactAdmision };
