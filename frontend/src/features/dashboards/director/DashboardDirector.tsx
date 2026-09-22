@@ -71,7 +71,7 @@ export default function DashboardDirector() {
           ))}
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
+        <section className="grid gap-6 xl:grid-cols-2 relative">
           <article className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -80,30 +80,41 @@ export default function DashboardDirector() {
               </div>
             </div>
             <div className="grid gap-6 xl:grid-cols-2">
-              <div>
+              <div className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6 relative">
+                <span className="absolute top-2 right-2 rounded-full bg-[#FFB800]/10 px-2 py-1 text-xs font-bold text-[#FFB800]">COHORTE 2026 - 100 alumnos</span>
                 <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Tasa de eficiencia curricular</p>
-                <p className="mt-1 text-sm text-[#1E293B]">COHORTE 2026 - 100 alumnos</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={efficiencyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }} />
-                    <Bar dataKey="value" fill="#8884d8" />
+                    <Bar dataKey="value" fill="#94A3B8" />
+                    <Bar dataKey="value" fill="#22C55E" />
+                    <Bar dataKey="value" fill="#EF4444" />
+                    <Bar dataKey="value" fill="#003366" />
                   </BarChart>
                 </ResponsiveContainer>
+                <ul className="space-y-3">
+                  {efficiencyData.map((data) => (
+                    <li key={data.name} className="flex items-start gap-3 text-sm">
+                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#94A3B8]/10 text-[#94A3B8]">●</span>
+                      <span className="text-[#1E293B]">{data.name} - {data.value} alumnos ({(data.value / 100) * 100}%)</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div>
+              <div className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
                 <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Comparativa institucional / Posicionamiento de tu carrera</p>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={retentionData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }} />
-                    <Bar dataKey="value" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ul className="space-y-3">
+                  {retentionData.map((data) => (
+                    <li key={data.name} className="flex items-start gap-3 text-sm">
+                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#FFB800]/10 text-[#FFB800]">●</span>
+                      <span className="text-[#1E293B]">{data.name} - {data.value}%</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-[#878787]">Las identidades de otras carreras se mantienen anónimas por política institucional.</p>
               </div>
             </div>
           </article>
@@ -116,6 +127,7 @@ export default function DashboardDirector() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Progresión curricular</p>
                 <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Lectura de la malla, hitos de avance y asignaturas que requieren atención.</h3>
               </div>
+              <BookOpen className="size-5 text-[#22C55E]" />
             </div>
             <div className="grid gap-6 xl:grid-cols-2">
               <div>
@@ -123,22 +135,37 @@ export default function DashboardDirector() {
                 <ul className="space-y-3">
                   {courseProgress.map((course) => (
                     <li key={course.name} className="flex items-start gap-3 text-sm">
-                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#22C55E]/10 text-[#22C55E]">✓</span>
-                      <span className="text-[#1E293B]">{course.name} - {course.value}%</span>
+                      <progress className="progress progress-primary w-full" value={course.value} max="100" />
+                      <span className="text-[#1E293B]">{course.name} - {course.value}% - {course.value === 84? 12 : course.value === 68? 18 : course.value === 51? 16 : 4} {course.value === 37? 'hitos' : 'asignaturas'}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Alertas académicas / Asignaturas críticas</p>
-                <ul className="space-y-3">
-                  {criticalCourses.map((course) => (
-                    <li key={course.name} className="flex items-start gap-3 text-sm">
-                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#EF4444]/10 text-[#EF4444]">!</span>
-                      <span className="text-[#1E293B]">{course.name} ({course.code}) - {course.semester} semestre - {course.passingRate}%</span>
-                    </li>
-                  ))}
-                </ul>
+                <table className="table table-compact w-full">
+                  <thead>
+                    <tr>
+                      <th>CÓDIGO</th>
+                      <th>ASIGNATURA</th>
+                      <th>SEMESTRE</th>
+                      <th>REPROBACIÓN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {criticalCourses.map((course) => (
+                      <tr key={course.name}>
+                        <td>{course.code}</td>
+                        <td>{course.name}</td>
+                        <td>{course.semester}</td>
+                        <td>
+                          {course.passingRate}% 
+                          {course.critical? <span className="badge badge-error gap-2">Crítica</span> : <span className="badge badge-warning gap-2">Atención</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </article>
