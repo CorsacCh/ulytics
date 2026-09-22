@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { TablaMatricula } from '../components/TablaMatricula'
 import { BarChart3, TrendingUp, AlertCircle, Users, BookOpen, ArrowUpRight, ArrowDownRight } from 'lucide-react'
@@ -92,6 +91,7 @@ function CourseCard({ course }: any) {
     </div>
   )
 }
+<<<<<<< HEAD
 
 export default function DashboardDirector() {
   const { user } = useAuth()
