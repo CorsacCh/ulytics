@@ -7,6 +7,8 @@ import helmet from "helmet";
 import authRoutes from "./routes/auth.routes.js";
 import adminUserRoutes from "./routes/admin-users.routes.js";
 import cargaRoutes from './routes/carga.routes.js';
+import reporteriaRoutes from './routes/reporteria.routes.js';
+import ambitoRoutes from './routes/ambito.routes.js';
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -48,6 +50,8 @@ app.get("/api/health", (_request, response) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminUserRoutes);
 app.use("/api/cargas", cargaRoutes);
+app.use('/api/reporteria', reporteriaRoutes);
+app.use('/api/ambitos', ambitoRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -25,6 +25,10 @@ export const AmbitoAcademico = sequelize.define(
       type: DataTypes.STRING(160),
       allowNull: false
     },
+    ambito_padre_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     activo: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

@@ -7,6 +7,10 @@ import { Macrounidad } from "./Macrounidad.js";
 import { Carrera } from "./Carrera.js";
 import { CargaDatos } from "./CargaDatos.js";
 import { FactAdmision } from "./FactAdmision.js";
+import { FactProgresion } from "./FactProgresion.js";
+import { FactEficiencia } from "./FactEficiencia.js";
+import { FactTitulacion } from "./FactTitulacion.js";
+import { FactAsignaturaCritica } from "./FactAsignaturaCritica.js";
 
 Rol.belongsToMany(Permiso, {
   through: { model: "rol_permiso", timestamps: false },
@@ -60,4 +64,4 @@ AuditoriaUsuario.belongsTo(Usuario, {
   as: "usuario_afectado"
 });
 
-export { Rol, Permiso, AmbitoAcademico, Usuario, AuditoriaUsuario, Macrounidad, Carrera, CargaDatos, FactAdmision };
+export { Rol, Permiso, AmbitoAcademico, Usuario, AuditoriaUsuario, Macrounidad, Carrera, CargaDatos, FactAdmision, FactProgresion, FactEficiencia, FactTitulacion, FactAsignaturaCritica };

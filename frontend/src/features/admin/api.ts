@@ -3,6 +3,7 @@ import type {
   AcademicScope,
   AdminRole,
   AdminUser,
+  AmbitosCatalog,
   CreateUserPayload,
 } from './types'
 
@@ -16,6 +17,10 @@ export async function listAdminRoles() {
 
 export async function listAcademicScopes() {
   return apiRequest<{ scopes: AcademicScope[] }>('/api/admin/scopes')
+}
+
+export async function listAmbitosCatalog() {
+  return apiRequest<AmbitosCatalog>('/api/ambitos')
 }
 
 export async function createAdminUser(payload: CreateUserPayload) {

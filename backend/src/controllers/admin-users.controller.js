@@ -10,6 +10,7 @@ import {
   findDuplicateEmail,
   findUserById,
   listUsers,
+  resolveScopeForRole,
   serializeUser
 } from "../services/user.service.js";
 import { AppError } from "../utils/app-error.js";
@@ -41,6 +42,23 @@ async function getRoleAndScope(rolId, ambitoId, transaction) {
   return { role, scope };
 }
 
+/**
+ * Resuelve el ámbito al crear un usuario: acepta `ambitoId` (ámbito existente)
+ * o, para DIRECTOR/DECANO, el `car_codigo` / `id_macrounidad` del catálogo.
+ */
+async function resolveCreateScope(rolId, body, transaction) {
+  const role = await Rol.findByPk(rolId, { transaction });
+  if (!role?.activo) throw new AppError("El rol no es válido.", 422, "INVALID_ROLE");
+
+  const scope = await resolveScopeForRole(role.codigo, body, transaction);
+  if (!scope?.activo) {
+    throw new AppError("El ámbito no es válido.", 422, "INVALID_SCOPE");
+  }
+
+  assertRoleScopeCompatibility(role.codigo, scope.tipo);
+  return scope;
+}
+
 export async function getUsers(_request, response, next) {
   try {
     const users = await listUsers();
@@ -55,9 +73,9 @@ export async function createUser(request, response, next) {
 
   try {
     transaction = await sequelize.transaction();
-    const { nombre, email, temporaryPassword, rolId, ambitoId } = request.body;
+    const { nombre, email, temporaryPassword, rolId } = request.body;
     assertPasswordPolicy(temporaryPassword);
-    await getRoleAndScope(rolId, ambitoId, transaction);
+    const scope = await resolveCreateScope(rolId, request.body, transaction);
 
     if (await findDuplicateEmail(email)) {
       throw new AppError("El correo ya está registrado.", 409, "EMAIL_EXISTS");
@@ -69,7 +87,7 @@ export async function createUser(request, response, next) {
         email,
         password_hash: await bcrypt.hash(temporaryPassword, 12),
         rol_id: rolId,
-        ambito_id: ambitoId,
+        ambito_id: scope.id_ambito,
         activo: true,
         debe_cambiar_password: true
       },
@@ -81,7 +99,7 @@ export async function createUser(request, response, next) {
         realizado_por_usuario_id: request.auth.user.id_usuario,
         usuario_afectado_id: user.id_usuario,
         accion: "USER_CREATED",
-        detalle: { rolId, ambitoId }
+        detalle: { rolId, ambitoId: scope.id_ambito }
       },
       { transaction }
     );

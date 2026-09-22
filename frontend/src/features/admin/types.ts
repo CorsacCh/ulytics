@@ -18,12 +18,29 @@ export type AcademicScope = {
   ambito_padre_id: number | null
 }
 
+export type CarreraOption = {
+  car_codigo: string
+  nombre: string
+}
+
+export type FacultadOption = {
+  id_macrounidad: string
+  nombre: string
+}
+
+export type AmbitosCatalog = {
+  carreras: CarreraOption[]
+  facultades: FacultadOption[]
+}
+
 export type CreateUserPayload = {
   nombre: string
   email: string
   temporaryPassword: string
   rolId: number
-  ambitoId: number
+  ambitoId?: number
+  car_codigo?: string
+  id_macrounidad?: string
 }
 
 export const requiredScopeByRole: Record<RoleCode, AcademicScopeType> = {

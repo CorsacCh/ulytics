@@ -21,6 +21,7 @@ import {
   listAcademicScopes,
   listAdminRoles,
   listAdminUsers,
+  listAmbitosCatalog,
   updateAdminUserStatus,
 } from './api'
 import {
@@ -29,6 +30,7 @@ import {
   type AcademicScope,
   type AdminRole,
   type AdminUser,
+  type AmbitosCatalog,
   type CreateUserPayload,
 } from './types'
 
@@ -271,13 +273,30 @@ function CreateUserDialog({
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [catalogo, setCatalogo] = useState<AmbitosCatalog>({ carreras: [], facultades: [] })
+  const [catalogoCargando, setCatalogoCargando] = useState(true)
+  const [catalogoError, setCatalogoError] = useState('')
+
+  // Al abrir el modal se cargan las carreras y facultades reales de la base de datos.
+  useEffect(() => {
+    let activo = true
+    setCatalogoCargando(true)
+    setCatalogoError('')
+
+    listAmbitosCatalog()
+      .then((response) => { if (activo) setCatalogo(response) })
+      .catch(() => { if (activo) setCatalogoError('No fue posible cargar el catálogo de carreras y facultades.') })
+      .finally(() => { if (activo) setCatalogoCargando(false) })
+
+    return () => { activo = false }
+  }, [])
 
   const selectedRole = roles.find((role) => role.id_rol === Number(form.rolId))
+  const expectedScopeType = selectedRole ? requiredScopeByRole[selectedRole.codigo] : null
   const compatibleScopes = useMemo(() => {
     if (!selectedRole) return []
-    const expectedType = requiredScopeByRole[selectedRole.codigo]
-    return scopes.filter((scope) => scope.tipo === expectedType)
-  }, [scopes, selectedRole])
+    return scopes.filter((scope) => scope.tipo === expectedScopeType)
+  }, [scopes, selectedRole, expectedScopeType])
 
   function updateField(field: keyof FormState, value: string) {
     setForm((current) => ({
@@ -313,8 +332,12 @@ function CreateUserDialog({
       email,
       temporaryPassword: form.temporaryPassword,
       rolId: selectedRole.id_rol,
-      ambitoId: Number(form.ambitoId),
     }
+
+    // El backend resuelve (o crea) el ámbito académico a partir de la carrera o facultad.
+    if (expectedScopeType === 'PROGRAMA') payload.car_codigo = form.ambitoId
+    else if (expectedScopeType === 'FACULTAD') payload.id_macrounidad = form.ambitoId
+    else payload.ambitoId = Number(form.ambitoId)
 
     setSubmitting(true)
     try {
@@ -327,8 +350,16 @@ function CreateUserDialog({
     }
   }
 
-  const expectedScopeType = selectedRole ? requiredScopeByRole[selectedRole.codigo] : null
-  const noCompatibleScopes = Boolean(selectedRole && compatibleScopes.length === 0)
+  // DIRECTOR elige una carrera y DECANO una facultad (valores del catálogo real);
+  // los demás roles eligen directamente un ámbito académico existente.
+  const scopeOptions = expectedScopeType === 'PROGRAMA'
+    ? catalogo.carreras.map((carrera) => ({ value: carrera.car_codigo, label: carrera.nombre }))
+    : expectedScopeType === 'FACULTAD'
+      ? catalogo.facultades.map((facultad) => ({ value: facultad.id_macrounidad, label: facultad.nombre }))
+      : compatibleScopes.map((scope) => ({ value: String(scope.id_ambito), label: scope.nombre }))
+  const noCompatibleScopes = Boolean(
+    selectedRole && !catalogoCargando && scopeOptions.length === 0,
+  )
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center overflow-y-auto bg-[#001A4D]/45 p-4">
@@ -385,17 +416,31 @@ function CreateUserDialog({
               value={form.ambitoId}
               onChange={(event) => updateField('ambitoId', event.target.value)}
               required
-              disabled={!selectedRole || noCompatibleScopes}
+              disabled={!selectedRole || noCompatibleScopes || catalogoCargando}
               className="mt-2 w-full rounded-lg border border-[#C8D5E2] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/10 disabled:cursor-not-allowed disabled:bg-[#F5F7FA]"
             >
-              <option value="">{selectedRole ? 'Selecciona un ámbito' : 'Primero selecciona un rol'}</option>
-              {compatibleScopes.map((scope) => <option key={scope.id_ambito} value={scope.id_ambito}>{scope.nombre}</option>)}
+              <option value="">
+                {!selectedRole
+                  ? 'Primero selecciona un rol'
+                  : catalogoCargando
+                    ? 'Cargando carreras y facultades…'
+                    : 'Selecciona un ámbito'}
+              </option>
+              {scopeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
 
+          {catalogoError && (
+            <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-5 text-amber-800">
+              {catalogoError}
+            </div>
+          )}
+
           {noCompatibleScopes && expectedScopeType && (
             <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-5 text-amber-800">
-              No existen ámbitos {scopeTypeLabels[expectedScopeType]} cargados. Deben registrarse antes de crear un usuario con este rol.
+              {expectedScopeType === 'INSTITUCION'
+                ? `No existen ámbitos ${scopeTypeLabels[expectedScopeType]} cargados. Deben registrarse antes de crear un usuario con este rol.`
+                : `No hay ${expectedScopeType === 'PROGRAMA' ? 'carreras' : 'facultades'} cargadas. Primero carga el archivo Excel de reportería.`}
             </div>
           )}
 
@@ -403,7 +448,7 @@ function CreateUserDialog({
 
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose} disabled={submitting} className="rounded-lg border border-[#B8C5D6] px-4 py-2.5 text-sm font-semibold text-[#003366] disabled:opacity-60">Cancelar</button>
-            <button type="submit" disabled={submitting || noCompatibleScopes} className="rounded-lg bg-[#D4AF37] px-4 py-2.5 text-sm font-bold text-[#001A4D] disabled:cursor-not-allowed disabled:opacity-60">
+            <button type="submit" disabled={submitting || noCompatibleScopes || catalogoCargando} className="rounded-lg bg-[#D4AF37] px-4 py-2.5 text-sm font-bold text-[#001A4D] disabled:cursor-not-allowed disabled:opacity-60">
               {submitting ? 'Creando usuario…' : 'Crear usuario'}
             </button>
           </div>

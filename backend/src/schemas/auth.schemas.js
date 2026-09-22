@@ -31,7 +31,9 @@ export const createUserSchema = z.object({
   email: institutionalEmailSchema,
   temporaryPassword: passwordSchema,
   rolId: z.coerce.number().int().positive(),
-  ambitoId: z.coerce.number().int().positive()
+  ambitoId: z.coerce.number().int().positive().optional(),
+  car_codigo: z.string().trim().min(1).max(20).optional(),
+  id_macrounidad: z.string().trim().min(1).max(20).optional()
 });
 
 export const updateUserSchema = z
