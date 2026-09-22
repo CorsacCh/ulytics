@@ -34,6 +34,71 @@ function CourseCard({ course }: any) {
   )
 }
 
+
+import { useState } from 'react'
+import { BarChart3, TrendingUp, AlertCircle, Users, BookOpen, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
+import type { Section } from '../../../shared/components/Sidebar'
+import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
+import DashboardHeader from '../../../shared/components/dashboard/DashboardHeader'
+
+const keyMetrics = [
+  { label: 'Matrícula nueva y especial', value: '58 alumnos', trend: 'Incluye ingresos PACE y RAE', positive: true, icon: Users },
+  { label: 'Retención de 1er año', value: '95%', trend: '↑ Alza vs cohorte anterior', positive: true, icon: TrendingUp },
+  { label: 'Titulación oportuna', value: '37%', trend: 'Tiempo efectivo +1 · Indicador de egreso', positive: true, icon: BookOpen },
+  { label: 'Tiempo promedio', value: '10.0 semestres', trend: 'Tiempo de titulación', positive: true, icon: ArrowUpRight },
+]
+
+const efficiencyData = [
+  { name: 'Baja', value: 12, color: '#EF4444' },
+  { name: 'Media', value: 28, color: '#94A3B8' },
+  { name: 'Alta', value: 42, color: '#22C55E' },
+  { name: 'Eficiente', value: 18, color: '#003366' },
+]
+
+const retentionData = [
+  { name: 'Carrera Anónima 1', value: 98, color: '#94A3B8' },
+  { name: 'Ing. Informática', value: 95, color: '#FFB800' },
+  { name: 'Carrera Anónima 2', value: 91, color: '#94A3B8' },
+  { name: 'Carrera Anónima 3', value: 88, color: '#94A3B8' },
+]
+
+const courseProgress = [
+  { name: 'Ciclo básico', value: 84, color: '#22C55E' },
+  { name: 'Ciclo disciplinar', value: 68, color: '#FFB800' },
+  { name: 'Ciclo profesional', value: 51, color: '#94A3B8' },
+  { name: 'Titulación', value: 37, color: '#003366' },
+]
+
+const criticalCourses = [
+  { name: 'Cálculo en una Variable', code: 'AAAA111-21', semester: '1', passingRate: 35.0, critical: true },
+  { name: 'Álgebra para la Ingeniería', code: 'AAAA112-21', semester: '1', passingRate: 31.2, critical: true },
+  { name: 'Programación', code: 'AAAA201-21', semester: '2', passingRate: 24.8, critical: false },
+]
+
+function CourseCard({ course }: any) {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:border-slate-300">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <h4 className="font-bold text-slate-800">{course.name}</h4>
+          <p className="mt-1 text-sm text-slate-500">{course.code} - {course.semester} semestre</p>
+        </div>
+        {course.critical && (
+          <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Crítica</span>
+        )}
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="text-xs text-slate-500">Aprobación</p>
+          <p className="mt-1 text-xl font-bold text-slate-800">{course.passingRate}%</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardDirector() {
   const { user } = useAuth()
   const [section, setSection] = useState<Section>('Dashboard')
@@ -46,16 +111,18 @@ export default function DashboardDirector() {
 
   return (
     <DashboardLayout section={section} open={open} onToggle={() => setOpen(!open)} onNavigate={go}>
-      <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
-        <DashboardHeader title="DIRECCIÓN DE CARRERA" subtitle="Ingeniería Civil Informática - Lectura institucional de la progresión académica y curricular" />
-        <div className="flex items-center justify-between mb-4">
-          <div />
-          <div className="flex gap-3">
-            <select className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-2 text-sm text-[#1E293B]">
-              <option value="2026">2026</option>
-            </select>
-            <button className="rounded-lg bg-[#FFB800] py-2 px-4 text-sm text-[#ffffff]">Exportar a PDF</button>
-            <button className="rounded-lg bg-[#FFB800] py-2 px-4 text-sm text-[#ffffff]">Descargar Excel</button>
+      <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10 grid grid-cols-12 gap-6">
+        <div className="col-span-12">
+          <DashboardHeader title="DIRECCIÓN DE CARRERA" subtitle="Ingeniería Civil Informática - Lectura institucional de la progresión académica y curricular" />
+          <div className="flex items-center justify-between mb-4">
+            <div />
+            <div className="flex gap-3">
+              <select className="rounded-lg border border-slate-200/80 bg-white p-2 text-sm text-slate-800">
+                <option value="2026">2026</option>
+              </select>
+              <button className="rounded-lg bg-[#FFB800] py-2 px-4 text-sm text-white">Exportar a PDF</button>
+              <button className="rounded-lg bg-[#FFB800] py-2 px-4 text-sm text-white">Descargar Excel</button>
+            </div>
           </div>
         </div>
 
@@ -66,101 +133,104 @@ export default function DashboardDirector() {
           <div className="border-l-4 border-yellow-400 bg-yellow-50 p-4">
             <p className="text-yellow-700">Tu cuenta de Director no tiene un código de carrera asociado. Contacta al Administrador.</p>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="col-span-12 grid grid-cols-4 gap-4">
           {keyMetrics.map((metric) => (
             <KpiCard key={metric.label} description={metric.trend} {...metric} />
           ))}
-        </section>
+        </div>
 
-        <section className="grid gap-6 xl:grid-cols-2 relative">
-          <article className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
+        <div className="col-span-12 grid grid-cols-2 gap-6">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Progresión analítica</p>
-                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Indicadores de avance, retención y eficiencia de la cohorte seleccionada.</h3>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">SECCIÓN 01 · RENDIMIENTO</p>
+                <h3 className="mt-1 text-lg font-bold text-slate-800">Indicadores de avance, retención y eficiencia de la cohorte seleccionada.</h3>
               </div>
             </div>
-            <div className="grid gap-6 xl:grid-cols-2">
-              <div className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6 relative">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm relative">
                 <span className="absolute top-2 right-2 rounded-full bg-[#FFB800]/10 px-2 py-1 text-xs font-bold text-[#FFB800]">COHORTE 2026 - 100 alumnos</span>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Tasa de eficiencia curricular</p>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={efficiencyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }} />
-                    <Bar dataKey="value" fill="#94A3B8" />
-                    <Bar dataKey="value" fill="#22C55E" />
-                    <Bar dataKey="value" fill="#EF4444" />
-                    <Bar dataKey="value" fill="#003366" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Tasa de eficiencia curricular</p>
+                <div className="h-40 w-full rounded-full bg-slate-100">
+                  <div className="h-40 rounded-full" style={{ width: '12%', backgroundColor: '#EF4444' }}></div>
+                  <div className="h-40 rounded-full" style={{ width: '28%', backgroundColor: '#94A3B8', marginLeft: '12%' }}></div>
+                  <div className="h-40 rounded-full" style={{ width: '42%', backgroundColor: '#22C55E', marginLeft: '40%' }}></div>
+                  <div className="h-40 rounded-full" style={{ width: '18%', backgroundColor: '#003366', marginLeft: '82%' }}></div>
+                </div>
                 <ul className="space-y-3">
                   {efficiencyData.map((data) => (
                     <li key={data.name} className="flex items-start gap-3 text-sm">
                       <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#94A3B8]/10 text-[#94A3B8]">●</span>
-                      <span className="text-[#1E293B]">{data.name} - {data.value} alumnos ({(data.value / 100) * 100}%)</span>
+                      <span className="text-slate-800">{data.name} - {data.value} alumnos ({(data.value / 100) * 100}%)</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Comparativa institucional / Posicionamiento de tu carrera</p>
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Comparativa institucional / Posicionamiento de tu carrera</p>
                 <ul className="space-y-3">
                   {retentionData.map((data) => (
                     <li key={data.name} className="flex items-start gap-3 text-sm">
-                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#FFB800]/10 text-[#FFB800]">●</span>
-                      <span className="text-[#1E293B]">{data.name} - {data.value}%</span>
+                      <div className="h-2.5 rounded-full bg-slate-100 w-full">
+                        <div className="h-2.5 rounded-full" style={{ width: `${data.value}%`, backgroundColor: data.name === 'Ing. Informática'? '#FFB800' : '#94A3B8' }}></div>
+                      </div>
+                      <span className="text-slate-800">{data.name} - {data.value}%</span>
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs text-[#878787]">Las identidades de otras carreras se mantienen anónimas por política institucional.</p>
+                <p className="text-xs text-slate-500">Las identidades de otras carreras se mantienen anónimas por política institucional.</p>
               </div>
             </div>
-          </article>
-        </section>
+          </div>
+        </div>
 
-        <section className="grid gap-6 xl:grid-cols-2">
-          <article className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
+        <div className="col-span-12 grid grid-cols-2 gap-6">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Progresión curricular</p>
-                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Lectura de la malla, hitos de avance y asignaturas que requieren atención.</h3>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">SECCIÓN 02 · TRAYECTORIA FORMATIVA</p>
+                <h3 className="mt-1 text-lg font-bold text-slate-800">Lectura de la malla, hitos de avance y asignaturas que requieren atención.</h3>
               </div>
               <BookOpen className="size-5 text-[#22C55E]" />
             </div>
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Avance por ciclo formativo</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Avance por ciclo formativo</p>
                 <ul className="space-y-3">
                   {courseProgress.map((course) => (
                     <li key={course.name} className="flex items-start gap-3 text-sm">
-                      <progress className="progress progress-primary w-full" value={course.value} max="100" />
-                      <span className="text-[#1E293B]">{course.name} - {course.value}% - {course.value === 84? 12 : course.value === 68? 18 : course.value === 51? 16 : 4} {course.value === 37? 'hitos' : 'asignaturas'}</span>
+                      <div className="h-2.5 rounded-full bg-slate-100 w-full">
+                        <div className="h-2.5 rounded-full" style={{ width: `${course.value}%`, backgroundColor: '#22C55E' }}></div>
+                      </div>
+                      <span className="text-slate-800">{course.name} - {course.value}% - {course.value === 84? 12 : course.value === 68? 18 : course.value === 51? 16 : 4} {course.value === 37? 'hitos' : 'asignaturas'}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Alertas académicas / Asignaturas críticas</p>
-                <table className="table table-compact w-full">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Alertas académicas / Asignaturas críticas</p>
+                <table className="w-full text-left border-collapse divide-y divide-slate-100">
                   <thead>
                     <tr>
-                      <th>CÓDIGO</th>
-                      <th>ASIGNATURA</th>
-                      <th>SEMESTRE</th>
-                      <th>REPROBACIÓN</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase text-slate-500">CÓDIGO</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase text-slate-500">ASIGNATURA</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase text-slate-500">SEMESTRE</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase text-slate-500">REPROBACIÓN</th>
                     </tr>
                   </thead>
                   <tbody>
                     {criticalCourses.map((course) => (
                       <tr key={course.name}>
-                        <td>{course.code}</td>
-                        <td>{course.name}</td>
-                        <td>{course.semester}</td>
-                        <td>
+                        <td className="px-4 py-3">{course.code}</td>
+                        <td className="px-4 py-3">{course.name}</td>
+                        <td className="px-4 py-3">{course.semester}</td>
+                        <td className="px-4 py-3">
                           {course.passingRate}% 
-                          {course.critical? <span className="badge badge-error gap-2">Crítica</span> : <span className="badge badge-warning gap-2">Atención</span>}
+                          {course.critical? (
+                            <span className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Crítica</span>
+                          ) : (
+                            <span className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Atención</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -168,6 +238,7 @@ export default function DashboardDirector() {
                 </table>
               </div>
             </div>
+<<<<<<< HEAD
           </article>
         </section>
 <<<<<<< HEAD
@@ -183,6 +254,10 @@ export default function DashboardDirector() {
         )}
 =======
 >>>>>>> 9796ae6 (refactor: update DashboardDirector component to match new design requirements)
+=======
+          </div>
+        </div>
+>>>>>>> 6bcca7f (refactor: restructure DashboardDirector.tsx for improved visuals)
       </div>
     </DashboardLayout>
   )
