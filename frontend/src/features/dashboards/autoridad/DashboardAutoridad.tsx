@@ -3,6 +3,7 @@ import { BarChart3, TrendingUp, Building2, Users, AlertCircle, GraduationCap } f
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
 import type { Section } from '../../../shared/components/Sidebar'
+import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
 
 const facultyRetention = [
   { faculty: 'Ingeniería', rate: 88 },
@@ -40,19 +41,6 @@ const facultyDistribution = [
   { name: 'Administración', value: 15, fill: '#8B5CF6' },
 ]
 
-function MetricBox({ label, value, trend, positive, icon: Icon }: any) {
-  return (
-    <article className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">{label}</p>
-        <Icon className="size-5 text-[#FFB800]" />
-      </div>
-      <p className="mt-3 text-2xl font-bold text-[#1E293B]">{value}</p>
-      <p className={`mt-1 text-xs font-medium ${positive ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>{trend}</p>
-    </article>
-  )
-}
-
 function CareerRow({ career }: any) {
   return (
     <tr className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
@@ -88,7 +76,7 @@ export default function DashboardAutoridad() {
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {institutionalMetrics.map((metric) => (
-            <MetricBox key={metric.label} {...metric} />
+            <KpiCard key={metric.label} description={metric.trend} {...metric} />
           ))}
         </section>
 
