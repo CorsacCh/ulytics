@@ -33,44 +33,156 @@ function CourseCard({ course }: any) {
   )
 }
 
+const renderContent = () => {
+  switch ('Home') {
+    case 'Progresión analítica':
+      return <div>Progresión analítica</div>;
+    case 'Progresión curricular':
+      return <div>Progresión curricular</div>;
+    case 'Historial de descargas':
+      return <div>Historial de descargas</div>;
+    case 'Home':
+    default:
+      return (
+        <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
+          <DashboardHeader title="Dashboard del Director" subtitle="FACULTAD DE INGENIERÍA" />
 
+          {/* Tarjetas KPI */}
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {keyMetrics.map((metric, index) => (
+              <KpiCard key={index} {...metric} variant="spacious" />
+            ))}
+          </section>
 
-<<<<<<< HEAD
-const keyMetrics = [
-  { label: 'Matrícula nueva y especial', value: '58 alumnos', trend: 'Incluye ingresos PACE y RAE', positive: true, icon: Users },
-  { label: 'Retención de 1er año', value: '95%', trend: '↑ Alza vs cohorte anterior', positive: true, icon: TrendingUp },
-  { label: 'Titulación oportuna', value: '37%', trend: 'Tiempo efectivo +1 · Indicador de egreso', positive: true, icon: BookOpen },
-  { label: 'Tiempo promedio', value: '10.0 semestres', trend: 'Tiempo de titulación', positive: true, icon: ArrowUpRight },
-]
+          {/* Gráficos Centrales */}
+          <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Ranking y comparativa de carreras
+                  </p>
+                  <h2 className="mt-1 text-lg font-bold text-slate-800">
+                    Desempeño por Escuelas (Tasa de Retención)
+                  </h2>
+                </div>
+              </div>
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={keyMetrics} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                    <XAxis type="number" domain={[0, 100]} hide />
+                    <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                    <Tooltip 
+                      cursor={{ fill: '#F8FAFC' }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={40}>
+                      {keyMetrics.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.value < 85 ? '#c20430' : '#00693e'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-const efficiencyData = [
-  { name: 'Baja', value: 12, color: '#EF4444' },
-  { name: 'Media', value: 28, color: '#94A3B8' },
-  { name: 'Alta', value: 42, color: '#22C55E' },
-  { name: 'Eficiente', value: 18, color: '#003366' },
-]
+            <div className="flex flex-col rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <div className="mb-6">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Distribución de trayectoria
+                </p>
+                <h2 className="mt-1 text-lg font-bold text-slate-800">
+                  Estado de estudiantes
+                </h2>
+              </div>
+              <div className="relative flex h-[200px] items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={keyMetrics}
+                      innerRadius={65}
+                      outerRadius={85}
+                      paddingAngle={2}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {keyMetrics.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.value < 85 ? '#c20430' : '#00693e'} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  <span className="text-2xl font-bold text-slate-800">85%</span>
+                  <span className="text-xs text-slate-500">sin alerta</span>
+                </div>
+              </div>
+              
+              <div className="mt-auto space-y-3 pt-4">
+                {keyMetrics.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="size-3 rounded-full" style={{ backgroundColor: item.value < 85 ? '#c20430' : '#00693e' }} />
+                      <span className="text-slate-600">{item.label}</span>
+                    </div>
+                    <span className="font-bold text-slate-800">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
-const retentionData = [
-  { name: 'Carrera Anónima 1', value: 98, color: '#94A3B8' },
-  { name: 'Ing. Informática', value: 95, color: '#FFB800' },
-  { name: 'Carrera Anónima 2', value: 91, color: '#94A3B8' },
-  { name: 'Carrera Anónima 3', value: 88, color: '#94A3B8' },
-]
+          {/* Tabla de Seguimiento Prioritario */}
+          <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
+            <div className="border-b border-slate-100 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-red-500">
+                    Seguimiento prioritario
+                  </p>
+                  <h2 className="mt-1 text-lg font-bold text-slate-800">
+                    Ramos críticos trans-carrera
+                  </h2>
+                </div>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto p-6 pt-0">
+              <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className="border-b border-slate-200 py-4 pr-4 font-semibold text-slate-500">CÓDIGO</th>
+                    <th className="border-b border-slate-200 py-4 pr-4 font-semibold text-slate-500">ASIGNATURA</th>
+                    <th className="border-b border-slate-200 py-4 pr-4 font-semibold text-slate-500">CARRERAS AFECTADAS</th>
+                    <th className="border-b border-slate-200 py-4 text-right font-semibold text-slate-500">TASA REPROBACIÓN PROMEDIO</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {keyMetrics.map((metric, idx) => (
+                    <tr key={idx} className="transition-colors hover:bg-slate-50/50">
+                      <td className="py-4 pr-4 font-medium text-emerald-600">{metric.label}</td>
+                      <td className="py-4 pr-4 font-bold text-slate-800">{metric.value}</td>
+                      <td className="py-4 pr-4 text-slate-600">Carreras</td>
+                      <td className="py-4 text-right">
+                        <span className="inline-flex rounded-md bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                          20%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      );
+    }
+  };
 
-const courseProgress = [
-  { name: 'Ciclo básico', value: 84, color: '#22C55E' },
-  { name: 'Ciclo disciplinar', value: 68, color: '#FFB800' },
-  { name: 'Ciclo profesional', value: 51, color: '#94A3B8' },
-  { name: 'Titulación', value: 37, color: '#003366' },
-]
+  const [section, setSection] = useState<Section>('Home');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-const criticalCourses = [
-  { name: 'Cálculo en una Variable', code: 'AAAA111-21', semester: '1', passingRate: 35.0, critical: true },
-  { name: 'Álgebra para la Ingeniería', code: 'AAAA112-21', semester: '1', passingRate: 31.2, critical: true },
-  { name: 'Programación', code: 'AAAA201-21', semester: '2', passingRate: 24.8, critical: false },
-]
-
-function CourseCard({ course }: any) {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:border-slate-300">
       <div className="flex items-start justify-between gap-3">
@@ -90,9 +202,17 @@ function CourseCard({ course }: any) {
       </div>
     </div>
   )
+    <DashboardLayout
+      section={section}
+      open={sidebarOpen}
+      onToggle={() => setSidebarOpen((prev) => !prev)}
+      onNavigate={(sec) => setSection(sec)}
+      role="academic"
+    >
+      {renderContent()}
+    </DashboardLayout>
+  );
 }
-<<<<<<< HEAD
-
 export default function DashboardDirector() {
   const { user } = useAuth()
   const [section, setSection] = useState<Section>('Dashboard')
