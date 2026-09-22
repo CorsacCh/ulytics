@@ -1,5 +1,8 @@
+
 import { useState } from 'react'
 import { TablaMatricula } from '../components/TablaMatricula'
+import { BarChart3, TrendingUp, AlertCircle, Users, BookOpen, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
 import type { Section } from '../../../shared/components/Sidebar'
 import { useAuth } from '../../auth/AuthContext'
@@ -7,13 +10,12 @@ import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
 import DashboardHeader from '../../../shared/components/dashboard/DashboardHeader'
 
 function CourseCard({ course }: any) {
-  const passingRate = ((course.passing / course.enrollment) * 100).toFixed(1)
   return (
     <div className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-4 transition-colors hover:border-[#FFB800]">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h4 className="font-semibold text-[#1E293B]">{course.name}</h4>
-          <p className="mt-1 text-sm text-[#878787]">{course.enrollment} estudiantes inscritos</p>
+          <p className="mt-1 text-sm text-[#878787]">{course.code} - {course.semester} semestre</p>
         </div>
         {course.critical && (
           <span className="rounded-full bg-[#EF4444]/10 px-2 py-1 text-xs font-bold text-[#EF4444]">
@@ -25,11 +27,7 @@ function CourseCard({ course }: any) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
           <p className="text-xs text-[#878787]">Aprobación</p>
-          <p className="mt-1 text-xl font-bold text-[#1E293B]">{passingRate}%</p>
-        </div>
-        <div>
-          <p className="text-xs text-[#878787]">Promedio</p>
-          <p className="mt-1 text-xl font-bold text-[#1E293B]">{course.avgGrade.toFixed(1)}</p>
+          <p className="mt-1 text-xl font-bold text-[#1E293B]">{course.passingRate}%</p>
         </div>
       </div>
     </div>
@@ -49,7 +47,17 @@ export default function DashboardDirector() {
   return (
     <DashboardLayout section={section} open={open} onToggle={() => setOpen(!open)} onNavigate={go}>
       <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
-        <DashboardHeader title="Dashboard del Director" subtitle="Ingeniería Civil Informática" />
+        <DashboardHeader title="DIRECCIÓN DE CARRERA" subtitle="Ingeniería Civil Informática - Lectura institucional de la progresión académica y curricular" />
+        <div className="flex items-center justify-between mb-4">
+          <div />
+          <div className="flex gap-3">
+            <select className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-2 text-sm text-[#1E293B]">
+              <option value="2026">2026</option>
+            </select>
+            <button className="rounded-lg bg-[#FFB800] py-2 px-4 text-sm text-[#ffffff]">Exportar a PDF</button>
+            <button className="rounded-lg bg-[#FFB800] py-2 px-4 text-sm text-[#ffffff]">Descargar Excel</button>
+          </div>
+        </div>
 
         {/* En lugar de "0001" estático, pasamos el código real del usuario logueado */}
         {carCodigoActivo ? (
@@ -67,55 +75,75 @@ export default function DashboardDirector() {
           <article className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Análisis Histórico</p>
-                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Tasa de Retención (5 años)</h3>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Progresión analítica</p>
+                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Indicadores de avance, retención y eficiencia de la cohorte seleccionada.</h3>
               </div>
-              <TrendingUp className="size-5 text-[#22C55E]" />
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={retentionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-                <YAxis domain={[80, 95]} tick={{ fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }}
-                  formatter={(value) => `${value}%`}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="rate" 
-                  stroke="#FFB800" 
-                  strokeWidth={3}
-                  dot={{ fill: '#FFB800', r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Tasa de eficiencia curricular</p>
+                <p className="mt-1 text-sm text-[#1E293B]">COHORTE 2026 - 100 alumnos</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={efficiencyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }} />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Comparativa institucional / Posicionamiento de tu carrera</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={retentionData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }} />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </article>
+        </section>
 
+        <section className="grid gap-6 xl:grid-cols-2">
           <article className="rounded-lg border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Desempeño Académico</p>
-                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Distribución por Año</h3>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Progresión curricular</p>
+                <h3 className="mt-1 text-lg font-bold text-[#1E293B]">Lectura de la malla, hitos de avance y asignaturas que requieren atención.</h3>
               </div>
-              <BarChart3 className="size-5 text-[#FFB800]" />
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={performanceByYear}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '8px' }} />
-                <Legend />
-                <Bar dataKey="excellent" fill="#22C55E" name="Excelente (≥6.5)" />
-                <Bar dataKey="good" fill="#FFB800" name="Bueno (5.5-6.4)" />
-                <Bar dataKey="acceptable" fill="#94A3B8" name="Aceptable (4.5-5.4)" />
-                <Bar dataKey="failing" fill="#EF4444" name="Insuficiente (<4.5)" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Avance por ciclo formativo</p>
+                <ul className="space-y-3">
+                  {courseProgress.map((course) => (
+                    <li key={course.name} className="flex items-start gap-3 text-sm">
+                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#22C55E]/10 text-[#22C55E]">✓</span>
+                      <span className="text-[#1E293B]">{course.name} - {course.value}%</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#878787]">Alertas académicas / Asignaturas críticas</p>
+                <ul className="space-y-3">
+                  {criticalCourses.map((course) => (
+                    <li key={course.name} className="flex items-start gap-3 text-sm">
+                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#EF4444]/10 text-[#EF4444]">!</span>
+                      <span className="text-[#1E293B]">{course.name} ({course.code}) - {course.semester} semestre - {course.passingRate}%</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </article>
         </section>
+<<<<<<< HEAD
 
         <section>
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -126,6 +154,8 @@ export default function DashboardDirector() {
             <AlertCircle className="size-5 text-[#EF4444]" />
           </div>
         )}
+=======
+>>>>>>> 9796ae6 (refactor: update DashboardDirector component to match new design requirements)
       </div>
     </DashboardLayout>
   )
