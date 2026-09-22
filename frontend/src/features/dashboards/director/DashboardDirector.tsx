@@ -4,6 +4,7 @@ import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
 import type { Section } from '../../../shared/components/Sidebar'
 import { useAuth } from '../../auth/AuthContext'
 import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
+import DashboardHeader from '../../../shared/components/dashboard/DashboardHeader'
 
 function CourseCard({ course }: any) {
   const passingRate = ((course.passing / course.enrollment) * 100).toFixed(1)
