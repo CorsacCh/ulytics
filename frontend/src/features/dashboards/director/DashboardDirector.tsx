@@ -35,14 +35,8 @@ function CourseCard({ course }: any) {
 }
 
 
-import { useState } from 'react'
-import { BarChart3, TrendingUp, AlertCircle, Users, BookOpen, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
-import type { Section } from '../../../shared/components/Sidebar'
-import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
-import DashboardHeader from '../../../shared/components/dashboard/DashboardHeader'
 
+<<<<<<< HEAD
 const keyMetrics = [
   { label: 'Matrícula nueva y especial', value: '58 alumnos', trend: 'Incluye ingresos PACE y RAE', positive: true, icon: Users },
   { label: 'Retención de 1er año', value: '95%', trend: '↑ Alza vs cohorte anterior', positive: true, icon: TrendingUp },
@@ -238,10 +232,7 @@ export default function DashboardDirector() {
                 </table>
               </div>
             </div>
-<<<<<<< HEAD
-          </article>
-        </section>
-<<<<<<< HEAD
+
 
         <section>
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -251,14 +242,9 @@ export default function DashboardDirector() {
             </div>
             <AlertCircle className="size-5 text-[#EF4444]" />
           </div>
-        )}
-=======
->>>>>>> 9796ae6 (refactor: update DashboardDirector component to match new design requirements)
-=======
-          </div>
-        </div>
->>>>>>> 6bcca7f (refactor: restructure DashboardDirector.tsx for improved visuals)
+        </section>
       </div>
-    </DashboardLayout>
-  )
+    </div>
+  </DashboardLayout>
+  );
 }
