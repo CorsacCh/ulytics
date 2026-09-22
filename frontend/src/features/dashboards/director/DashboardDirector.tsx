@@ -19,6 +19,7 @@ function CourseCard({ course }: any) {
             Crítica
           </span>
         )}
+        
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
@@ -46,22 +47,15 @@ export default function DashboardDirector() {
 
   return (
     <DashboardLayout section={section} open={open} onToggle={() => setOpen(!open)} onNavigate={go}>
-      <div className="mx-auto w-full max-w-7xl p-5 sm:p-8 lg:p-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#002B49]">Mi Carrera</h1>
-          <p className="mt-2 text-gray-500">
-            Análisis de Progresión Académica y Curricular
-          </p>
-        </div>
+      <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
+        <DashboardHeader title="Dashboard del Director" subtitle="Ingeniería Civil Informática" />
 
-<<<<<<< HEAD
         {/* En lugar de "0001" estático, pasamos el código real del usuario logueado */}
         {carCodigoActivo ? (
           <TablaMatricula carCodigo={carCodigoActivo} />
         ) : (
           <div className="border-l-4 border-yellow-400 bg-yellow-50 p-4">
             <p className="text-yellow-700">Tu cuenta de Director no tiene un código de carrera asociado. Contacta al Administrador.</p>
-=======
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {keyMetrics.map((metric) => (
             <KpiCard key={metric.label} description={metric.trend} {...metric} />
@@ -129,7 +123,6 @@ export default function DashboardDirector() {
               <h3 className="mt-1 text-xl font-bold text-[#1E293B]">Estado de Asignaturas Críticas</h3>
             </div>
             <AlertCircle className="size-5 text-[#EF4444]" />
->>>>>>> 339247f (refactor: replace MetricBox with KpiCard)
           </div>
         )}
       </div>

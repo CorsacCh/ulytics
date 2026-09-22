@@ -68,11 +68,7 @@ export default function DashboardAutoridad() {
   return (
     <DashboardLayout section={section} open={open} onToggle={() => setOpen(!open)} onNavigate={go}>
       <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
-        <header className="border-b border-[#D9E5F0] pb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#556B7B]">Autoridad Central</p>
-          <h1 className="mt-1 text-3xl font-bold text-[#003366]">Reporte Institucional</h1>
-          <p className="mt-2 text-sm text-[#556B7B]">Indicadores de gestión académica UACh - Período 2026 - Semestre 1</p>
-        </header>
+        <DashboardHeader title="Reporte Institucional" subtitle="Autoridad Central" />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {institutionalMetrics.map((metric) => (
