@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import DashboardAdmin from '../features/dashboards/admin/DashboardAdmin'
-import DashboardAutoridad from '../features/dashboards/autoridad/DashboardAutoridad'
-import DashboardDecano from '../features/dashboards/decano/DashboardDecano'
-import DashboardDirector from '../features/dashboards/director/DashboardDirector'
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage'
-import { LoginPage } from '../features/auth/LoginPage'
 import { useAuth } from '../features/auth/AuthContext'
 import { roleHomePath, type RoleCode } from '../features/auth/types'
+
+// Carga perezosa (Lazy loading) de las vistas para mejor rendimiento
+const DashboardAdmin = lazy(() => import('../features/dashboards/admin/DashboardAdmin'))
+const DashboardAutoridad = lazy(() => import('../features/dashboards/autoridad/DashboardAutoridad'))
+const DashboardDecano = lazy(() => import('../features/dashboards/decano/DashboardDecano'))
+const DashboardDirector = lazy(() => import('../features/dashboards/director/DashboardDirector'))
+const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
 
 function LoadingScreen() {
   return (
@@ -64,20 +66,30 @@ function ProtectedRoute({
   return children
 }
 
+function DashboardLoading() {
+  return <div className="flex min-h-screen items-center justify-center bg-[#F5F7FA] text-sm font-semibold text-[#556B7B]">Cargando dashboard...</div>
+}
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<EntryRedirect />} />
-      <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
-      <Route
-        path="/cambiar-contrasena"
-        element={<ProtectedRoute passwordChangePage><ChangePasswordPage /></ProtectedRoute>}
-      />
-      <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><DashboardAdmin /></ProtectedRoute>} />
-      <Route path="/director" element={<ProtectedRoute roles={['DIRECTOR']}><DashboardDirector /></ProtectedRoute>} />
-      <Route path="/decanatura/*" element={<ProtectedRoute roles={['DECANO']}><DashboardDecano /></ProtectedRoute>} />
-      <Route path="/autoridad-central" element={<ProtectedRoute roles={['AUTORIDAD_CENTRAL']}><DashboardAutoridad /></ProtectedRoute>} />
-      <Route path="*" element={<EntryRedirect />} />
-    </Routes>
+    <Suspense fallback={<DashboardLoading />}>
+      <Routes>
+        <Route path="/" element={<EntryRedirect />} />
+        <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
+        <Route path="/cambiar-contrasena" element={
+          <ProtectedRoute passwordChangePage>
+            <ChangePasswordPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><DashboardAdmin /></ProtectedRoute>} />
+        <Route path="/director" element={<ProtectedRoute roles={['DIRECTOR']}><DashboardDirector /></ProtectedRoute>} />
+        <Route path="/decano" element={<ProtectedRoute roles={['DECANO']}><DashboardDecano /></ProtectedRoute>} />
+        <Route path="/decanatura/*" element={<ProtectedRoute roles={['DECANO']}><DashboardDecano /></ProtectedRoute>} />
+        <Route path="/autoridad" element={<ProtectedRoute roles={['AUTORIDAD_CENTRAL']}><DashboardAutoridad /></ProtectedRoute>} />
+
+        <Route path="*" element={<EntryRedirect />} />
+      </Routes>
+    </Suspense>
   )
 }

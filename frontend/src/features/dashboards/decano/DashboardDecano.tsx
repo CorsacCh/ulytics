@@ -1,47 +1,182 @@
-import { AlertTriangle, BookOpen, FileWarning, GraduationCap, Users } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { useState } from 'react'
-import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
-import type { Section } from '../../../shared/components/Sidebar'
-import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
+import React, { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { BookOpen, AlertTriangle } from 'lucide-react';
 
-const careerData = [
-  { name: 'Ing. Civil Industrial', value: 92, fill: '#00693e' },
-  { name: 'Ing. Civil Informática', value: 89, fill: '#00693e' },
-  { name: 'Ing. Civil Mecánica', value: 81, fill: '#c20430' },
-]
-const distributionData = [
-  { name: 'En trayectoria', value: 62, color: '#00693e' },
-  { name: 'Con alerta', value: 23, color: '#FFB800' },
-  { name: 'Riesgo crítico', value: 15, color: '#c20430' },
-]
-const criticalSubjects = [
-  { code: 'BAIN075', name: 'Cálculo en una Variable', careers: 'Afecta a 6 carreras', failure: '42.0%' },
-  { code: 'INFO101', name: 'Fundamentos de Programación', careers: 'Afecta a 4 carreras', failure: '36.7%' },
-  { code: 'MECN120', name: 'Mecánica Aplicada', careers: 'Afecta a 2 carreras', failure: '31.4%' },
-]
-const metrics = [
-  { label: 'Matrícula Total Facultad', value: '1,850', description: 'En 7 carreras', positive: true, icon: Users },
-  { label: 'Retención Promedio (1er año)', value: '88%', description: '-1% vs año anterior', positive: false, icon: AlertTriangle },
-  { label: 'Titulación Oportuna Global', value: '41%', description: 'Cohortes con seguimiento N+1', positive: true, icon: GraduationCap },
-  { label: 'Carreras en Riesgo', value: '2', description: 'Retención < 85%', positive: false, icon: AlertTriangle },
-]
+import { DashboardLayout } from '../../../shared/layout/DashboardLayout';
+import type { Section } from '../../../shared/components/Sidebar';
+import DashboardHeader from '../../../shared/components/dashboard/DashboardHeader';
+import {KpiCard} from '../../../shared/components/dashboard/KpiCard';
 
-export default function DashboardDecano() {
-  const [section, setSection] = useState<Section>('Dashboard')
-  const [open, setOpen] = useState(true)
-  const [selectedSubject, setSelectedSubject] = useState<any>(null)
-  const go = (label: Section) => { setSection(label) }
+import { metrics } from './data/metrics';
+import { careerData } from './data/careerData';
+import { distributionData } from './data/distributionData';
+import { criticalSubjects } from './data/criticalSubjects';
 
-  return <DashboardLayout section={section} open={open} onToggle={() => setOpen(!open)} onNavigate={go}>
-    <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
-      <DashboardHeader title="Dashboard del Decano" subtitle="Ingeniería Civil Informática" />
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics.map((metric) => <KpiCard key={metric.label} variant="spacious" {...metric} />)}</section>
-      <section className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-        <article className="rounded-xl border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#878787]">Ranking y comparativa de carreras</p><h3 className="mt-1 text-xl font-bold text-[#1E293B]">Desempeño por Escuelas (Tasa de Retención)</h3></div><BookOpen className="size-5 text-[#22C55E]" /></div><div className="mt-6 h-[280px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={careerData} layout="vertical" margin={{ top: 5, right: 45, left: 12, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" /><XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={145} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} /><Tooltip cursor={{ fill: '#F8FAFC' }} formatter={(value) => [`${value}%`, 'Tasa de retención']} /><Bar dataKey="value" radius={[0, 5, 5, 0]}><LabelList dataKey="value" position="right" formatter={(value) => `${value}%`} />{careerData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}</Bar></BarChart></ResponsiveContainer></div></article>
-        <article className="rounded-xl border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#878787]">Distribución de trayectoria</p><h3 className="mt-1 text-xl font-bold text-[#1E293B]">Estado de estudiantes</h3><div className="relative mt-2 h-[190px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={distributionData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={78} paddingAngle={3}>{distributionData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value) => [`${value}%`, 'Estudiantes']} /></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold text-[#1E293B]">85%</span><span className="text-xs text-[#878787]">sin alerta</span></div></div><div className="space-y-3">{distributionData.map((entry) => <div key={entry.name} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 text-[#1E293B]"><span className="size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />{entry.name}</span><strong>{entry.value}%</strong></div>)}</div></article>
-      </section>
-      <section className="rounded-xl border border-[#E2E8F0] bg-[#ffffff] p-5 shadow-sm sm:p-6"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#EF4444]">Seguimiento prioritario</p><h3 className="mt-1 text-xl font-bold text-[#1E293B]">Ramos críticos trans-carrera</h3></div><FileWarning className="size-5 text-[#EF4444]" /></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b border-[#E2E8F0] text-xs uppercase tracking-wider text-[#878787]"><th className="pb-3">Código</th><th className="pb-3">Asignatura</th><th className="pb-3">Carreras afectadas</th><th className="pb-3 text-right">Tasa reprobación promedio</th></tr></thead><tbody>{criticalSubjects.map((subject) => <tr key={subject.code} onClick={() => setSelectedSubject(subject)} className="cursor-pointer border-b border-[#E2E8F0] transition-colors hover:bg-[#F8FAFC]"><td className="py-4 font-semibold text-[#22C55E]">{subject.code}</td><td className="py-4 font-semibold text-[#1E293B]">{subject.name}</td><td className="py-4 text-[#878787]">{subject.careers}</td><td className="py-4 text-right"><span className="rounded-full bg-[#EF4444]/10 px-2.5 py-1 text-xs font-bold text-[#EF4444]">{subject.failure}</span></td></tr>)}</tbody></table></div>{selectedSubject && <p className="mt-4 text-xs text-[#878787]" role="status">Asignatura seleccionada: <strong className="text-[#1E293B]">{selectedSubject.name}</strong></p>}</section>
-    </div>
-  </DashboardLayout>
+import { ProgresionAnaliticaDecano } from './components/ProgresionAnaliticaDecano';
+import { ProgresionCurricularDecano } from './components/ProgresionCurricularDecano';
+import { HistorialDescargasDecano } from './components/HistorialDescargasDecano';
+
+export default function Dashboard() {
+  const [section, setSection] = useState<Section>('Home');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const renderContent = () => {
+    switch (section) {
+      case 'Progresión analítica':
+        return <ProgresionAnaliticaDecano />;
+      case 'Progresión curricular':
+        return <ProgresionCurricularDecano />;
+      case 'Historial de descargas':
+        return <HistorialDescargasDecano />;
+      case 'Home':
+      default:
+        return (
+          <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10">
+            <DashboardHeader title="Dashboard del Decano" subtitle="FACULTAD DE INGENIERÍA" />
+
+            {/* Tarjetas KPI */}
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {metrics.map((metric, index) => (
+                <KpiCard key={index} {...metric} />
+              ))}
+            </section>
+
+            {/* Gráficos Centrales */}
+            <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                      Ranking y comparativa de carreras
+                    </p>
+                    <h2 className="mt-1 text-lg font-bold text-slate-800">
+                      Desempeño por Escuelas (Tasa de Retención)
+                    </h2>
+                  </div>
+                  <BookOpen className="size-5 text-emerald-600" />
+                </div>
+                <div className="h-[280px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={careerData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                      <XAxis type="number" domain={[0, 100]} hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                      <Tooltip 
+                        cursor={{ fill: '#F8FAFC' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={40}>
+                        {careerData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.value < 85 ? '#c20430' : '#00693e'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="flex flex-col rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                <div className="mb-6">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Distribución de trayectoria
+                  </p>
+                  <h2 className="mt-1 text-lg font-bold text-slate-800">
+                    Estado de estudiantes
+                  </h2>
+                </div>
+                <div className="relative flex h-[200px] items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={distributionData}
+                        innerRadius={65}
+                        outerRadius={85}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {distributionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-bold text-slate-800">85%</span>
+                    <span className="text-xs text-slate-500">sin alerta</span>
+                  </div>
+                </div>
+                
+                <div className="mt-auto space-y-3 pt-4">
+                  {distributionData.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-slate-600">{item.name}</span>
+                      </div>
+                      <span className="font-bold text-slate-800">{item.value}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Tabla de Seguimiento Prioritario */}
+            <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
+              <div className="border-b border-slate-100 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-red-500">
+                      Seguimiento prioritario
+                    </p>
+                    <h2 className="mt-1 text-lg font-bold text-slate-800">
+                      Ramos críticos trans-carrera
+                    </h2>
+                  </div>
+                  <AlertTriangle className="size-5 text-red-500" />
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto p-6 pt-0">
+                <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th className="border-b border-slate-200 py-4 pr-4 font-semibold text-slate-500">CÓDIGO</th>
+                      <th className="border-b border-slate-200 py-4 pr-4 font-semibold text-slate-500">ASIGNATURA</th>
+                      <th className="border-b border-slate-200 py-4 pr-4 font-semibold text-slate-500">CARRERAS AFECTADAS</th>
+                      <th className="border-b border-slate-200 py-4 text-right font-semibold text-slate-500">TASA REPROBACIÓN PROMEDIO</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {criticalSubjects.map((subject, idx) => (
+                      <tr key={idx} className="transition-colors hover:bg-slate-50/50">
+                        <td className="py-4 pr-4 font-medium text-emerald-600">{subject.code}</td>
+                        <td className="py-4 pr-4 font-bold text-slate-800">{subject.name}</td>
+                        <td className="py-4 pr-4 text-slate-600">{subject.careers}</td>
+                        <td className="py-4 text-right">
+                          <span className="inline-flex rounded-md bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                            {subject.failure}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+      );
+        }
+      };
+
+  return (
+    <DashboardLayout
+      section={section}
+      open={sidebarOpen}
+      onToggle={() => setSidebarOpen((prev) => !prev)}
+      onNavigate={(sec) => setSection(sec)}
+    >
+      {renderContent()}
+    </DashboardLayout>
+  );
 }
