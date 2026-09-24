@@ -25,7 +25,7 @@ const rolePaths: Record<RoleCode, string> = {
   ADMIN: '/admin',
   DIRECTOR: '/director',
   DECANO: '/decanatura',
-  AUTORIDAD_CENTRAL: '/autoridad-central',
+  AUTORIDAD_CENTRAL: '/autoridad',
 }
 
 export function roleHomePath(role: RoleCode) {

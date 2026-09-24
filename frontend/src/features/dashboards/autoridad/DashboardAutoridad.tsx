@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { BarChart3, TrendingUp, Building2, Users, AlertCircle, GraduationCap } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, Building2, BarChart3, AlertCircle /* y los que ya tenías */ } from 'lucide-react';
 
 import { DashboardLayout } from '../../../shared/layout/DashboardLayout';
 import type { Section } from '../../../shared/components/Sidebar';
@@ -181,9 +181,8 @@ export default function DashboardAutoridad() {
     <DashboardLayout 
       section={section} 
       open={sidebarOpen} 
-      onToggle={() => setSidebarOpen(!sidebarOpen)} 
-      onNavigate={setSection}
-      role="authority"
+      onToggle={() => setSidebarOpen((prev) => !prev)}
+      onNavigate={(sec) => setSection(sec)}
     >
       {renderContent()}
     </DashboardLayout>

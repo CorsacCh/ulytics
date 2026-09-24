@@ -9,7 +9,7 @@ const DashboardAdmin = lazy(() => import('../features/dashboards/admin/Dashboard
 const DashboardAutoridad = lazy(() => import('../features/dashboards/autoridad/DashboardAutoridad'))
 const DashboardDecano = lazy(() => import('../features/dashboards/decano/DashboardDecano'))
 const DashboardDirector = lazy(() => import('../features/dashboards/director/DashboardDirector'))
-const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
+const LoginPage = lazy(() => import('../features/auth/LoginPage'))
 
 function LoadingScreen() {
   return (

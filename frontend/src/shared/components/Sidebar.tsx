@@ -1,5 +1,6 @@
-import { Building2, ChevronLeft, LayoutDashboard, BarChart3, Settings, Users, FileText, LogOut, BookOpen, Clock, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, LayoutDashboard, BarChart3, Settings, Users, FileText, LogOut, BookOpen, Clock, type LucideIcon } from 'lucide-react'
 import ulyticsLogo from '../assets/branding/logo2_ULYTICS.jpeg'
+import type { AuthUser } from '../../features/auth/types';
 
 // Opciones de menu academico
 export type Section = 
@@ -29,15 +30,11 @@ const academicLinks: SidebarLink[] = [
 
 // Opciones para ADMIN
 const adminLinks: SidebarLink[] = [
-  { label: 'Dashboard', icon: LayoutDashboard },
+  { label: 'Home', icon: LayoutDashboard },
   { label: 'Períodos académicos', icon: BarChart3 },
   { label: 'Cargas de datos', icon: FileText },
   { label: 'Usuarios y permisos', icon: Users },
   { label: 'Configuración', icon: Settings },
-]
-
-const dashboardOnlyLinks: SidebarLink[] = [
-  { label: 'Dashboard', icon: LayoutDashboard },
 ]
 
 // Roles de perfiles
@@ -52,7 +49,7 @@ type SidebarProps = {
 
 export function Sidebar({ section, open, onToggle, onNavigate, user, onLogout }: SidebarProps) {
   const links = user.rol.codigo === 'ADMIN' ? adminLinks : academicLinks;
-  const title = user.rol.codigo === 'ADMIN' ? 'UACh Admin' : 'ULYTICS';
+  const title = 'ULYTICS';
 
   return (
     <aside 
@@ -63,19 +60,13 @@ export function Sidebar({ section, open, onToggle, onNavigate, user, onLogout }:
       {/* Cabecera con Logo */}
       <div className="flex h-20 shrink-0 items-center justify-between border-b border-[#004d99]/50 px-5">
         <div className="flex items-center gap-3 overflow-hidden">
-          {role === 'academic' || role === 'authority' ? (
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-[#00162e] p-1 shadow-inner">
-              <img 
-                src={ulyticsLogo} 
-                alt="Logo ULYTICS" 
-                className="max-h-full max-w-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#D4AF37] text-[#001f3f]" aria-hidden="true">
-              <Building2 className="size-5" />
-            </div>
-          )}
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-[#00162e] p-1 shadow-inner">
+            <img 
+              src={ulyticsLogo} 
+              alt="Logo ULYTICS" 
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
           <span className="text-xl font-black tracking-wider text-white drop-shadow-sm">{title}</span>
         </div>
 
@@ -120,6 +111,7 @@ export function Sidebar({ section, open, onToggle, onNavigate, user, onLogout }:
             Cerrar sesión
           </button>
         </div>
+      </div>
       {/* Pie de la barra lateral */}
       <div className="shrink-0 border-t border-[#004d99]/50 bg-black/20 px-5 py-4 text-xs leading-relaxed text-slate-300">
         <p className="font-semibold text-white">Universidad Austral de Chile</p>
