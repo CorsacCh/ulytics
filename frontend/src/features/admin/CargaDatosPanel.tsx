@@ -28,7 +28,7 @@ export const CargaDatosPanel = () => {
 
     try {
       // 2. Enviar al backend (Ajusta la URL base si la tienes centralizada en un archivo api.ts)
-      const response = await fetch('http://localhost:4004/api/cargas/upload', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/cargas/upload`, {
         method: 'POST',
         body: formData,
         // CRÍTICO: 'include' obliga al navegador a enviar la cookie de sesión JWT al backend
