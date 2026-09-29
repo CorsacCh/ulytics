@@ -1,4 +1,5 @@
 import { FileText, Download, ChevronDown } from 'lucide-react';
+import { EvolucionRetencion } from './EvolucionRetencion';
 
 export function ProgresionAnalitica() {
   return (
@@ -200,6 +201,11 @@ export function ProgresionAnalitica() {
           </table>
         </div>
       </div>
+
+      {/* GRÁFICO: Evolución longitudinal de retención por cohorte */}
+      <section className="grid grid-cols-1 gap-6">
+        <EvolucionRetencion />
+      </section>
 
       {/* TABLA 4: Titulación y tiempo de egreso */}
       <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
