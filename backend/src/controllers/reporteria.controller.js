@@ -1,4 +1,11 @@
-import { FactAdmision, FactProgresion, Carrera } from '../persistence/models/index.js';
+import {
+  FactAdmision,
+  FactProgresion,
+  FactEficiencia,
+  FactTitulacion,
+  FactAsignaturaCritica,
+  Carrera
+} from '../persistence/models/index.js';
 
 // PostgreSQL devuelve las columnas DECIMAL como string ("85.00"). El gráfico
 // necesita números (o null para las cohortes que todavía no tienen el dato).
@@ -93,6 +100,82 @@ export const getProgresion = async (req, res) => {
 
   } catch (error) {
     console.error('Error al obtener datos de progresión:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+export const getCurricular = async (req, res) => {
+  try {
+    const { car_codigo } = req.params;
+
+    // Verificar si la carrera existe
+    const carrera = await Carrera.findOne({ where: { car_codigo } });
+    if (!carrera) {
+      return res.status(404).json({ error: 'Carrera no encontrada' });
+    }
+
+    // Las tres series comparten la dimensión temporal (año) y se consultan en paralelo.
+    const [datosEficiencia, datosTitulacion, datosCriticas] = await Promise.all([
+      FactEficiencia.findAll({
+        where: { car_codigo },
+        order: [['anio', 'ASC']],
+        attributes: [
+          'anio',
+          'total_alumnos_regulares',
+          'nivel_baja',
+          'nivel_media',
+          'nivel_alta',
+          'nivel_eficiente'
+        ],
+        raw: true
+      }),
+      FactTitulacion.findAll({
+        where: { car_codigo },
+        order: [['anio', 'ASC']],
+        attributes: [
+          'anio',
+          'bachilleratos',
+          'licenciaturas_asig_pendientes',
+          'licenciaturas',
+          'titulados'
+        ],
+        raw: true
+      }),
+      FactAsignaturaCritica.findAll({
+        where: { car_codigo },
+        order: [['asig_codigo', 'ASC'], ['semestre', 'ASC'], ['anio', 'ASC']],
+        attributes: ['asig_codigo', 'semestre', 'anio', 'tasa_reprobacion'],
+        raw: true
+      })
+    ]);
+
+    res.status(200).json({
+      carrera: carrera.nombre,
+      eficiencia: datosEficiencia.map((fila) => ({
+        anio: fila.anio,
+        total_alumnos_regulares: toNumberOrNull(fila.total_alumnos_regulares),
+        nivel_baja: toNumberOrNull(fila.nivel_baja),
+        nivel_media: toNumberOrNull(fila.nivel_media),
+        nivel_alta: toNumberOrNull(fila.nivel_alta),
+        nivel_eficiente: toNumberOrNull(fila.nivel_eficiente)
+      })),
+      titulacion: datosTitulacion.map((fila) => ({
+        anio: fila.anio,
+        bachilleratos: toNumberOrNull(fila.bachilleratos),
+        licenciaturas_asig_pendientes: toNumberOrNull(fila.licenciaturas_asig_pendientes),
+        licenciaturas: toNumberOrNull(fila.licenciaturas),
+        titulados: toNumberOrNull(fila.titulados)
+      })),
+      criticas: datosCriticas.map((fila) => ({
+        asig_codigo: fila.asig_codigo,
+        semestre: toNumberOrNull(fila.semestre),
+        anio: fila.anio,
+        tasa_reprobacion: toNumberOrNull(fila.tasa_reprobacion)
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error en getCurricular:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
