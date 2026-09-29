@@ -55,8 +55,8 @@ export const getProgresion = async (req, res) => {
       return res.status(404).json({ error: 'Carrera no encontrada' });
     }
 
-    // Serie histórica de retención por cohorte, ordenada de forma ascendente
-    // para que el eje X del gráfico respete la secuencia temporal.
+    // Serie histórica por cohorte (retención y titulación), ordenada de forma
+    // ascendente para que el eje X del gráfico respete la secuencia temporal.
     const datosProgresion = await FactProgresion.findAll({
       where: { car_codigo },
       order: [['cohorte', 'ASC']],
@@ -66,7 +66,11 @@ export const getProgresion = async (req, res) => {
         'retencion_a2',
         'retencion_a3',
         'retencion_a4',
-        'retencion_total'
+        'retencion_total',
+        'tasa_titulacion_temprana',
+        'tasa_titulacion_oportuna',
+        'tasa_titulacion_efectiva',
+        'duracion_real_semestres'
       ],
       raw: true
     });
@@ -79,7 +83,11 @@ export const getProgresion = async (req, res) => {
         retencion_a2: toNumberOrNull(fila.retencion_a2),
         retencion_a3: toNumberOrNull(fila.retencion_a3),
         retencion_a4: toNumberOrNull(fila.retencion_a4),
-        retencion_total: toNumberOrNull(fila.retencion_total)
+        retencion_total: toNumberOrNull(fila.retencion_total),
+        tasa_titulacion_temprana: toNumberOrNull(fila.tasa_titulacion_temprana),
+        tasa_titulacion_oportuna: toNumberOrNull(fila.tasa_titulacion_oportuna),
+        tasa_titulacion_efectiva: toNumberOrNull(fila.tasa_titulacion_efectiva),
+        duracion_real_semestres: toNumberOrNull(fila.duracion_real_semestres)
       }))
     });
 
