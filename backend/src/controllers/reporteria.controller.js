@@ -1,4 +1,12 @@
-import { FactAdmision, Carrera } from '../persistence/models/index.js';
+import { FactAdmision, FactProgresion, Carrera } from '../persistence/models/index.js';
+
+// PostgreSQL devuelve las columnas DECIMAL como string ("85.00"). El gráfico
+// necesita números (o null para las cohortes que todavía no tienen el dato).
+const toNumberOrNull = (value) => {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 export const getMatricula = async (req, res) => {
   try {
@@ -33,6 +41,50 @@ export const getMatricula = async (req, res) => {
 
   } catch (error) {
     console.error('Error al obtener datos de matrícula:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+export const getProgresion = async (req, res) => {
+  try {
+    const { car_codigo } = req.params;
+
+    // Verificar si la carrera existe
+    const carrera = await Carrera.findOne({ where: { car_codigo } });
+    if (!carrera) {
+      return res.status(404).json({ error: 'Carrera no encontrada' });
+    }
+
+    // Serie histórica de retención por cohorte, ordenada de forma ascendente
+    // para que el eje X del gráfico respete la secuencia temporal.
+    const datosProgresion = await FactProgresion.findAll({
+      where: { car_codigo },
+      order: [['cohorte', 'ASC']],
+      attributes: [
+        'cohorte',
+        'retencion_a1',
+        'retencion_a2',
+        'retencion_a3',
+        'retencion_a4',
+        'retencion_total'
+      ],
+      raw: true
+    });
+
+    res.status(200).json({
+      carrera: carrera.nombre,
+      datos: datosProgresion.map((fila) => ({
+        cohorte: fila.cohorte,
+        retencion_a1: toNumberOrNull(fila.retencion_a1),
+        retencion_a2: toNumberOrNull(fila.retencion_a2),
+        retencion_a3: toNumberOrNull(fila.retencion_a3),
+        retencion_a4: toNumberOrNull(fila.retencion_a4),
+        retencion_total: toNumberOrNull(fila.retencion_total)
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error al obtener datos de progresión:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

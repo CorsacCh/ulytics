@@ -22,6 +22,33 @@ const parseDecimal = (value) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// Para las columnas porcentuales de progresión una celda vacía significa
+// "todavía no medible" (por ejemplo, la retención de 2do año de la cohorte más
+// reciente). Se escribe NULL en vez de 0 para que el gráfico muestre un hueco y
+// no una caída falsa a 0%. Un 0 explícito en el Excel sí se conserva.
+const parseDecimalOrNull = (value) => {
+  if (value === undefined || value === null || value === '-' || String(value).trim() === '') return null;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(',', '.').replace('%', '').trim();
+    if (cleaned === '') return null;
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
+  }
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? null : parsed;
+};
+
+// espacios sobrantes al inicio o al final (por ejemplo " TR1_2014"). Se
+// normalizan las claves de cada fila para que la búsqueda de columnas no
+// dependa de esos espacios y no se escriban ceros silenciosamente.
+const normalizeKeys = (row) => {
+  const normalized = {};
+  for (const [key, value] of Object.entries(row)) {
+    normalized[key.trim()] = value;
+  }
+  return normalized;
+};
+
 export const procesarCargaExcel = async (req, res, next) => {
   const t = await sequelize.transaction();
 
@@ -44,7 +71,9 @@ export const procesarCargaExcel = async (req, res, next) => {
     
     // --- 1. PROCESAMIENTO HOJA "Reporteria" ---
     const worksheetReporteria = workbook.Sheets['Reporteria'];
-    const datosReporteria = xlsx.utils.sheet_to_json(worksheetReporteria, { defval: null });
+    const datosReporteria = xlsx.utils
+      .sheet_to_json(worksheetReporteria, { defval: null })
+      .map(normalizeKeys);
     const aniosAnalisis = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
     for (const row of datosReporteria) {
@@ -77,19 +106,19 @@ export const procesarCargaExcel = async (req, res, next) => {
           }, { transaction: t });
         }
 
-        if (row[` TRTotal_${anio}`] !== undefined || row[`Dur_Sem_${anio}`] !== undefined) {
+        if (row[`TRTotal_${anio}`] !== undefined || row[`Dur_Sem_${anio}`] !== undefined) {
           await FactProgresion.upsert({
             car_codigo: row.CarCodigo.toString(),
             cohorte: anio,
-            retencion_a1: parseDecimal(row[` TR1_${anio}`]),
-            retencion_a2: parseDecimal(row[` TR2_${anio}`]),
-            retencion_a3: parseDecimal(row[` TR3_${anio}`]),
-            retencion_a4: parseDecimal(row[` TR4_${anio}`]),
-            retencion_total: parseDecimal(row[` TRTotal_${anio}`]),
-            tasa_titulacion_temprana: parseDecimal(row[` TTT_${anio}`]),
-            tasa_titulacion_oportuna: parseDecimal(row[` TTO_${anio}`]),
-            tasa_titulacion_efectiva: parseDecimal(row[` TTE_${anio}`]),
-            duracion_real_semestres: parseDecimal(row[`Dur_Sem_${anio}`]),
+            retencion_a1: parseDecimalOrNull(row[`TR1_${anio}`]),
+            retencion_a2: parseDecimalOrNull(row[`TR2_${anio}`]),
+            retencion_a3: parseDecimalOrNull(row[`TR3_${anio}`]),
+            retencion_a4: parseDecimalOrNull(row[`TR4_${anio}`]),
+            retencion_total: parseDecimalOrNull(row[`TRTotal_${anio}`]),
+            tasa_titulacion_temprana: parseDecimalOrNull(row[`TTT_${anio}`]),
+            tasa_titulacion_oportuna: parseDecimalOrNull(row[`TTO_${anio}`]),
+            tasa_titulacion_efectiva: parseDecimalOrNull(row[`TTE_${anio}`]),
+            duracion_real_semestres: parseDecimalOrNull(row[`Dur_Sem_${anio}`]),
             id_carga: nuevaCarga.id_carga
           }, { transaction: t });
         }
@@ -125,7 +154,9 @@ export const procesarCargaExcel = async (req, res, next) => {
     if (workbook.SheetNames.includes('AsigCriticas')) {
       const worksheetAsig = workbook.Sheets['AsigCriticas'];
       // range: 2 omite las dos primeras filas de título del Excel
-      const datosAsig = xlsx.utils.sheet_to_json(worksheetAsig, { defval: null, range: 2 });
+      const datosAsig = xlsx.utils
+        .sheet_to_json(worksheetAsig, { defval: null, range: 2 })
+        .map(normalizeKeys);
       
       const aniosCriticos = [2021, 2022, 2023, 2024, 2025, 2026];
 
