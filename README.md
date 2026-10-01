@@ -45,6 +45,16 @@ No es necesario instalar PostgreSQL directamente en el equipo. La base de datos
 se ejecuta dentro de Docker y sus datos permanecen en el volumen exclusivo
 `grupo4_ulytics_postgres_data`.
 
+## Ejecución Local de la Documentación (Docusaurus)
+
+Para levantar el portal de documentación técnica en tu entorno local, ejecuta los siguientes comandos desde la raíz del proyecto:
+
+```bash
+cd docs
+npm install
+npm run start
+```
+
 ## 1. Configurar los archivos de entorno
 
 Desde la raíz del repositorio, crea los tres archivos locales a partir de sus
