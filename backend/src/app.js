@@ -9,6 +9,7 @@ import adminUserRoutes from "./routes/admin-users.routes.js";
 import cargaRoutes from './routes/carga.routes.js';
 import reporteriaRoutes from './routes/reporteria.routes.js';
 import ambitoRoutes from './routes/ambito.routes.js';
+import decanaturaRoutes from './routes/decanatura.routes.js';
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -52,6 +53,7 @@ app.use("/api/admin", adminUserRoutes);
 app.use("/api/cargas", cargaRoutes);
 app.use('/api/reporteria', reporteriaRoutes);
 app.use('/api/ambitos', ambitoRoutes);
+app.use('/api/decanatura', decanaturaRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -11,17 +11,6 @@ const parseNumber = (value) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-const parseDecimal = (value) => {
-  if (value === undefined || value === null || value === '-' || String(value).trim() === '') return 0;
-  if (typeof value === 'string') {
-    const cleaned = value.replace(',', '.').replace('%', '').trim();
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
-  }
-  const parsed = parseFloat(value);
-  return isNaN(parsed) ? 0 : parsed;
-};
-
 // Para las columnas porcentuales de progresión una celda vacía significa
 // "todavía no medible" (por ejemplo, la retención de 2do año de la cohorte más
 // reciente). Se escribe NULL en vez de 0 para que el gráfico muestre un hueco y
@@ -38,15 +27,71 @@ const parseDecimalOrNull = (value) => {
   return isNaN(parsed) ? null : parsed;
 };
 
+// La hoja AsigCriticas guarda las tasas como fracciones numéricas con formato
+// de porcentaje (por ejemplo, 0.628 se visualiza como 62,8%). Se normaliza la
+// unidad antes de persistirla para conservar el valor mostrado por Excel.
+export const parseExcelPercentageOrNull = (value) => {
+  if (value === undefined || value === null || value === '-' || String(value).trim() === '') {
+    return null;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? null : value * 100;
+  }
+
+  const cleaned = value.replace(',', '.').replace('%', '').trim();
+  if (cleaned === '') return null;
+  const parsed = parseFloat(cleaned);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const normalizeHeader = (key) => {
+  const trimmed = String(key).trim();
+  const comparable = trimmed
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  // El archivo vigente contiene caracteres de reemplazo en estas cabeceras.
+  // Los alias permiten aceptar tanto la escritura correcta como la dañada.
+  if (/^c.digos asignaturas cr.ticas$/u.test(comparable)) {
+    return 'Códigos asignaturas críticas';
+  }
+
+  const titulo = comparable.match(/^t.tulo_(\d{4})$/u);
+  if (titulo) return `Título_${titulo[1]}`;
+
+  return trimmed;
+};
+
 // espacios sobrantes al inicio o al final (por ejemplo " TR1_2014"). Se
 // normalizan las claves de cada fila para que la búsqueda de columnas no
 // dependa de esos espacios y no se escriban ceros silenciosamente.
-const normalizeKeys = (row) => {
+export const normalizeKeys = (row) => {
   const normalized = {};
   for (const [key, value] of Object.entries(row)) {
-    normalized[key.trim()] = value;
+    normalized[normalizeHeader(key)] = value;
   }
   return normalized;
+};
+
+export const parseAsignaturasWorksheet = (worksheet) => {
+  // La fila 4 del Excel contiene las cabeceras; range usa índice base cero.
+  const rows = xlsx.utils
+    .sheet_to_json(worksheet, { defval: null, range: 3 })
+    .map(normalizeKeys);
+
+  if (rows.length === 0) return [];
+
+  const requiredHeaders = ['CarCodigo', 'Códigos asignaturas críticas', 'Semestre'];
+  const availableHeaders = new Set(Object.keys(rows[0]));
+  const missingHeaders = requiredHeaders.filter((header) => !availableHeaders.has(header));
+
+  if (missingHeaders.length > 0) {
+    throw new Error(`Faltan columnas requeridas en "AsigCriticas": ${missingHeaders.join(', ')}.`);
+  }
+
+  return rows;
 };
 
 export const procesarCargaExcel = async (req, res, next) => {
@@ -153,10 +198,7 @@ export const procesarCargaExcel = async (req, res, next) => {
     // --- 2. PROCESAMIENTO HOJA "AsigCriticas" ---
     if (workbook.SheetNames.includes('AsigCriticas')) {
       const worksheetAsig = workbook.Sheets['AsigCriticas'];
-      // range: 2 omite las dos primeras filas de título del Excel
-      const datosAsig = xlsx.utils
-        .sheet_to_json(worksheetAsig, { defval: null, range: 2 })
-        .map(normalizeKeys);
+      const datosAsig = parseAsignaturasWorksheet(worksheetAsig);
       
       const aniosCriticos = [2021, 2022, 2023, 2024, 2025, 2026];
 
@@ -166,16 +208,20 @@ export const procesarCargaExcel = async (req, res, next) => {
         const carCodigo = row.CarCodigo.toString();
         const asigCodigo = row['Códigos asignaturas críticas'];
         const semestre = parseNumber(row['Semestre']);
+        if (!asigCodigo) continue;
         
         for (const anio of aniosCriticos) {
           const valorTasa = row[anio.toString()];
           if (valorTasa !== undefined && valorTasa !== null) {
+            const tasaReprobacion = parseExcelPercentageOrNull(valorTasa);
+            if (tasaReprobacion === null) continue;
+
             await FactAsignaturaCritica.upsert({
               car_codigo: carCodigo,
-              asig_codigo: asigCodigo,
+              asig_codigo: asigCodigo.toString(),
               semestre: semestre,
               anio: anio,
-              tasa_reprobacion: parseDecimal(valorTasa),
+              tasa_reprobacion: tasaReprobacion,
               id_carga: nuevaCarga.id_carga
             }, { transaction: t });
           }

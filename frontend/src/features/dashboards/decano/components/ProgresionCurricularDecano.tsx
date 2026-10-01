@@ -1,245 +1,599 @@
-import { useState } from 'react';
-import { FileText, ChevronDown, Building2, Download } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2 } from 'lucide-react';
 
-const carreras = [
-  'Ingeniería Civil Acústica',
-  'Ingeniería Civil en Obras Civiles',
-  'Ingeniería en Construcción',
-  'Ingeniería Civil Electrónica',
-  'Ingeniería Civil Industrial',
-  'Ingeniería Naval',
-  'Ingeniería Civil en Informática',
-  'Ingeniería Civil Mecánica',
-  'Ingeniería Plan Común'
+import { ApiError } from '../../../auth/api';
+import { useAuth } from '../../../auth/AuthContext';
+import {
+  obtenerCarrerasDecanatura,
+  obtenerCurricularCarrera,
+  type CarreraDecanatura,
+  type FilaAsignaturaInformada,
+  type FilaAvanceCurricular,
+  type FilaEficienciaCurricular,
+} from '../api';
+
+type LimitePeriodo = 'todos' | number;
+
+interface Indicador {
+  titulo: string;
+  llave: string;
+}
+
+interface FilaPeriodo {
+  periodo: number;
+  valores: Record<string, number | null>;
+}
+
+interface FilaAsignaturaAgrupada {
+  codigo: string;
+  semestre: number | null;
+  valores: Record<number, number | null>;
+}
+
+interface TablaIndicadoresProps {
+  titulo: string;
+  descripcion: string;
+  indicadores: Indicador[];
+  filas: FilaPeriodo[];
+  mensajeVacio: string;
+}
+
+interface TablaAvanceProps {
+  titulo: string;
+  descripcion: string;
+  columnas: Indicador[];
+  filas: FilaPeriodo[];
+  mensajeVacio: string;
+}
+
+interface TablaAsignaturasProps {
+  filas: FilaAsignaturaAgrupada[];
+  anios: number[];
+  mensajeVacio: string;
+}
+
+// Estos campos ya vienen como cantidades en el Excel y se muestran sin
+// convertirlos en porcentajes ni volver a calcular sus tramos.
+const INDICADORES_EFICIENCIA: Indicador[] = [
+  { titulo: 'Nº de alumnos regulares', llave: 'total_alumnos_regulares' },
+  { titulo: 'Baja (entre 0<60%)', llave: 'nivel_baja' },
+  { titulo: 'Media (entre 61 y <80%)', llave: 'nivel_media' },
+  { titulo: 'Alta (entre 80 <100%)', llave: 'nivel_alta' },
+  { titulo: 'Eficiente =100%', llave: 'nivel_eficiente' },
 ];
 
-export function ProgresionCurricularDecano() {
-  const [carreraActiva, setCarreraActiva] = useState('Ingeniería Civil en Informática');
-  const [menuAbierto, setMenuAbierto] = useState(false);
+// El Excel no contiene una columna "Título con pendientes"; por eso no se
+// presenta ni se infiere en esta tabla.
+const COLUMNAS_AVANCE: Indicador[] = [
+  { titulo: 'Bachillerato', llave: 'bachilleratos' },
+  {
+    titulo: 'Licenciatura con asignaturas pendientes de Bachillerato',
+    llave: 'licenciaturas_asig_pendientes',
+  },
+  { titulo: 'Licenciatura', llave: 'licenciaturas' },
+  { titulo: 'Título', llave: 'titulados' },
+];
+
+const formateadorCantidad = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 0,
+});
+
+const formateadorDecimal = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 2,
+});
+
+function obtenerAnios(anios: number[]) {
+  return [...new Set(anios)].sort((a, b) => a - b);
+}
+
+function formatearCantidad(valor: number | null) {
+  if (valor === null || valor === undefined) {
+    return <span className="text-slate-400">-</span>;
+  }
+
+  return formateadorCantidad.format(valor);
+}
+
+function formatearTasaInformada(valor: number | null) {
+  if (valor === null || valor === undefined) {
+    return <span className="text-slate-400">-</span>;
+  }
+
+  return `${formateadorDecimal.format(valor)}%`;
+}
+
+function agruparAsignaturas(filas: FilaAsignaturaInformada[]) {
+  const agrupadas = new Map<string, FilaAsignaturaAgrupada>();
+
+  filas.forEach((filaOrigen) => {
+    const clave = `${filaOrigen.asig_codigo}-${filaOrigen.semestre ?? 'sin-semestre'}`;
+    const fila = agrupadas.get(clave) ?? {
+      codigo: filaOrigen.asig_codigo,
+      semestre: filaOrigen.semestre,
+      valores: {},
+    };
+
+    fila.valores[filaOrigen.anio] = filaOrigen.tasa_reprobacion;
+    agrupadas.set(clave, fila);
+  });
+
+  return [...agrupadas.values()];
+}
+
+function TablaIndicadores({
+  titulo,
+  descripcion,
+  indicadores,
+  filas,
+  mensajeVacio,
+}: TablaIndicadoresProps) {
+  const anios = obtenerAnios(filas.map((fila) => fila.periodo));
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-10 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
-      
-      {/* PANEL DE CONTROL DECANATURA */}
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm md:flex-row md:items-end md:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="flex items-center gap-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
-            <Building2 className="size-4 text-[#FFB800]" />
-            Facultad de Ingeniería
-          </p>
-          <h2 className="text-2xl font-bold text-[#0A192F]">Progresión curricular</h2>
-          
-          {/* Dropdown Selector de Carreras */}
-          <div className="relative mt-2">
-            <button 
-              onClick={() => setMenuAbierto(!menuAbierto)}
-              className="flex w-full md:w-[350px] items-center justify-between rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-left font-bold text-[#0A192F] shadow-sm transition-colors hover:bg-slate-100 focus:outline-none"
-            >
-              <span className="truncate">{carreraActiva}</span>
-              <ChevronDown className={`size-4 text-slate-500 transition-transform ${menuAbierto ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {menuAbierto && (
-              <div className="absolute left-0 top-full z-50 mt-2 w-full md:w-[350px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-                {carreras.map((carrera) => (
-                  <button
-                    key={carrera}
-                    onClick={() => {
-                      setCarreraActiva(carrera);
-                      setMenuAbierto(false);
-                    }}
-                    className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50 ${
-                      carreraActiva === carrera 
-                        ? 'border-l-4 border-[#FFB800] bg-slate-50 font-bold text-[#0A192F]' 
-                        : 'border-l-4 border-transparent font-medium text-slate-600'
-                    }`}
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-lg font-bold text-slate-800">{titulo}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
+      </div>
+
+      {anios.length === 0 ? (
+        <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-[#FFF9E6]">
+                <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
+                  Indicador / Año
+                </th>
+                {anios.map((anio) => (
+                  <th
+                    key={anio}
+                    className="border-b border-slate-200 px-6 py-3 text-center font-semibold text-slate-700"
                   >
-                    {carrera}
-                  </button>
+                    {anio}
+                  </th>
                 ))}
-              </div>
-            )}
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-600">
+              {indicadores.map((indicador) => (
+                <tr key={indicador.llave} className="hover:bg-slate-50/60">
+                  <td className="px-6 py-3.5 font-medium text-slate-800">{indicador.titulo}</td>
+                  {anios.map((anio) => (
+                    <td key={anio} className="px-6 py-3.5 text-center tabular-nums">
+                      {formatearCantidad(
+                        filas.find((fila) => fila.periodo === anio)?.valores[indicador.llave]
+                          ?? null,
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
+    </section>
+  );
+}
 
-        <button className="flex w-fit items-center gap-2 rounded-lg bg-[#0A192F] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#112a4f]">
-          <FileText className="size-4" />
-          Exportar reporte a PDF
-        </button>
+function TablaAvance({
+  titulo,
+  descripcion,
+  columnas,
+  filas,
+  mensajeVacio,
+}: TablaAvanceProps) {
+  const anios = obtenerAnios(filas.map((fila) => fila.periodo));
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-lg font-bold text-slate-800">{titulo}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
       </div>
 
-      {/* CONTENEDOR DE DATOS DE LA CARRERA SELECCIONADA */}
-      <div className="space-y-6">
-        
-        {/* Encabezado Dinámico de la Carrera */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      {anios.length === 0 ? (
+        <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-[#FFF9E6]">
+                <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
+                  Año
+                </th>
+                {columnas.map((columna) => (
+                  <th
+                    key={columna.llave}
+                    className="border-b border-slate-200 px-6 py-3 text-center font-semibold text-slate-700"
+                  >
+                    {columna.titulo}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-600">
+              {anios.map((anio) => (
+                <tr key={anio} className="hover:bg-slate-50/60">
+                  <td className="px-6 py-3.5 font-bold text-slate-900">{anio}</td>
+                  {columnas.map((columna) => (
+                    <td key={columna.llave} className="px-6 py-3.5 text-center tabular-nums">
+                      {formatearCantidad(
+                        filas.find((fila) => fila.periodo === anio)?.valores[columna.llave]
+                          ?? null,
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TablaAsignaturas({ filas, anios, mensajeVacio }: TablaAsignaturasProps) {
+  return (
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-lg font-bold text-slate-800">Asignaturas informadas en la carga</h3>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Código, semestre y tasa de reprobación consignados en el Excel, sin aplicar una
+          clasificación adicional.
+        </p>
+      </div>
+
+      {filas.length === 0 || anios.length === 0 ? (
+        <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-[#FFF9E6]">
+                <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
+                  Código de asignatura
+                </th>
+                <th className="border-b border-slate-200 px-6 py-3 text-center font-semibold text-slate-700">
+                  Semestre
+                </th>
+                {anios.map((anio) => (
+                  <th
+                    key={anio}
+                    className="border-b border-slate-200 px-6 py-3 text-center font-semibold text-slate-700"
+                  >
+                    {anio}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-600">
+              {filas.map((fila) => (
+                <tr
+                  key={`${fila.codigo}-${fila.semestre ?? 'sin-semestre'}`}
+                  className="hover:bg-slate-50/60"
+                >
+                  <td className="px-6 py-3.5 font-bold text-slate-900">{fila.codigo}</td>
+                  <td className="px-6 py-3.5 text-center tabular-nums">
+                    {formatearCantidad(fila.semestre)}
+                  </td>
+                  {anios.map((anio) => (
+                    <td key={anio} className="px-6 py-3.5 text-center tabular-nums">
+                      {formatearTasaInformada(fila.valores[anio] ?? null)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function describirError(error: unknown, contexto: 'catalogo' | 'datos') {
+  if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return contexto === 'catalogo'
+        ? 'La cuenta no tiene un ámbito de facultad válido para consultar carreras.'
+        : 'La carrera seleccionada no pertenece al ámbito autorizado de esta cuenta.';
+    }
+    if (error.status === 404) return 'La carrera seleccionada no está disponible.';
+    return error.message;
+  }
+
+  if (error instanceof Error) return error.message;
+  return contexto === 'catalogo'
+    ? 'No fue posible cargar las carreras de la facultad.'
+    : 'No fue posible cargar los datos de progresión curricular.';
+}
+
+export function ProgresionCurricularDecano() {
+  const { user } = useAuth();
+  const [facultad, setFacultad] = useState(user?.ambito?.nombre ?? 'Facultad');
+  const [carreras, setCarreras] = useState<CarreraDecanatura[]>([]);
+  const [codigoCarrera, setCodigoCarrera] = useState('');
+  const [eficiencia, setEficiencia] = useState<FilaEficienciaCurricular[]>([]);
+  const [avance, setAvance] = useState<FilaAvanceCurricular[]>([]);
+  const [asignaturas, setAsignaturas] = useState<FilaAsignaturaInformada[]>([]);
+  const [periodoDesde, setPeriodoDesde] = useState<LimitePeriodo>('todos');
+  const [periodoHasta, setPeriodoHasta] = useState<LimitePeriodo>('todos');
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
+  const [cargandoDatos, setCargandoDatos] = useState(false);
+  const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarCarreras = async () => {
+      try {
+        setCargandoCatalogo(true);
+        setErrorCatalogo(null);
+        const respuesta = await obtenerCarrerasDecanatura();
+        if (!activo) return;
+
+        const opciones = respuesta.carreras ?? [];
+        setFacultad(respuesta.facultad?.nombre || user?.ambito?.nombre || 'Facultad');
+        setCarreras(opciones);
+        setCodigoCarrera((actual) => {
+          if (opciones.some((carrera) => carrera.car_codigo === actual)) return actual;
+          return opciones[0]?.car_codigo ?? '';
+        });
+      } catch (error) {
+        if (!activo) return;
+        setCarreras([]);
+        setCodigoCarrera('');
+        setErrorCatalogo(describirError(error, 'catalogo'));
+      } finally {
+        if (activo) setCargandoCatalogo(false);
+      }
+    };
+
+    void cargarCarreras();
+    return () => { activo = false; };
+  }, [user?.ambito?.nombre]);
+
+  useEffect(() => {
+    if (!codigoCarrera) {
+      setEficiencia([]);
+      setAvance([]);
+      setAsignaturas([]);
+      setCargandoDatos(false);
+      return;
+    }
+
+    let activo = true;
+
+    const cargarDatos = async () => {
+      try {
+        setCargandoDatos(true);
+        setErrorDatos(null);
+        setPeriodoDesde('todos');
+        setPeriodoHasta('todos');
+
+        const respuesta = await obtenerCurricularCarrera(codigoCarrera);
+        if (!activo) return;
+
+        setEficiencia(respuesta.eficiencia ?? []);
+        setAvance(respuesta.titulacion ?? []);
+        setAsignaturas(respuesta.criticas ?? []);
+      } catch (error) {
+        if (!activo) return;
+        setEficiencia([]);
+        setAvance([]);
+        setAsignaturas([]);
+        setErrorDatos(describirError(error, 'datos'));
+      } finally {
+        if (activo) setCargandoDatos(false);
+      }
+    };
+
+    void cargarDatos();
+    return () => { activo = false; };
+  }, [codigoCarrera]);
+
+  const filasEficiencia = useMemo<FilaPeriodo[]>(() => eficiencia.map((fila) => ({
+    periodo: fila.anio,
+    valores: {
+      total_alumnos_regulares: fila.total_alumnos_regulares,
+      nivel_baja: fila.nivel_baja,
+      nivel_media: fila.nivel_media,
+      nivel_alta: fila.nivel_alta,
+      nivel_eficiente: fila.nivel_eficiente,
+    },
+  })), [eficiencia]);
+
+  const filasAvance = useMemo<FilaPeriodo[]>(() => avance.map((fila) => ({
+    periodo: fila.anio,
+    valores: {
+      bachilleratos: fila.bachilleratos,
+      licenciaturas_asig_pendientes: fila.licenciaturas_asig_pendientes,
+      licenciaturas: fila.licenciaturas,
+      titulados: fila.titulados,
+    },
+  })), [avance]);
+
+  const periodosDisponibles = useMemo(() => obtenerAnios([
+    ...eficiencia.map((fila) => fila.anio),
+    ...avance.map((fila) => fila.anio),
+    ...asignaturas.map((fila) => fila.anio),
+  ]), [eficiencia, avance, asignaturas]);
+
+  const estaEnRango = (periodo: number) => (
+    (periodoDesde === 'todos' || periodo >= periodoDesde)
+    && (periodoHasta === 'todos' || periodo <= periodoHasta)
+  );
+
+  const eficienciaFiltrada = filasEficiencia.filter((fila) => estaEnRango(fila.periodo));
+  const avanceFiltrado = filasAvance.filter((fila) => estaEnRango(fila.periodo));
+  const asignaturasFiltradas = asignaturas.filter((fila) => estaEnRango(fila.anio));
+  const filasAsignaturas = agruparAsignaturas(asignaturasFiltradas);
+  const aniosAsignaturas = obtenerAnios(asignaturasFiltradas.map((fila) => fila.anio));
+
+  const cambiarPeriodoDesde = (valor: string) => {
+    const nuevoDesde = valor === 'todos' ? 'todos' : Number(valor);
+    setPeriodoDesde(nuevoDesde);
+
+    if (
+      nuevoDesde !== 'todos'
+      && periodoHasta !== 'todos'
+      && nuevoDesde > periodoHasta
+    ) {
+      setPeriodoHasta(nuevoDesde);
+    }
+  };
+
+  const cambiarPeriodoHasta = (valor: string) => {
+    const nuevoHasta = valor === 'todos' ? 'todos' : Number(valor);
+    setPeriodoHasta(nuevoHasta);
+
+    if (
+      nuevoHasta !== 'todos'
+      && periodoDesde !== 'todos'
+      && nuevoHasta < periodoDesde
+    ) {
+      setPeriodoDesde(nuevoHasta);
+    }
+  };
+
+  const carreraSeleccionada = carreras.find((carrera) => carrera.car_codigo === codigoCarrera);
+  const sinCarreras = !cargandoCatalogo && !errorCatalogo && carreras.length === 0;
+
+  return (
+    <div className="mx-auto min-h-screen max-w-[1440px] space-y-8 bg-[#F8FAFC] p-5 sm:p-8 lg:p-10">
+      <header className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+          <Building2 className="size-4 text-[#FFB800]" />
+          {facultad}
+        </p>
+        <h1 className="mt-2 text-3xl font-bold text-[#0A192F]">Progresión curricular</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+          Cantidades de avance curricular y datos de asignaturas informados para las carreras de
+          la facultad.
+        </p>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(280px,1fr)_180px_180px]">
+          <label className="text-sm font-semibold text-slate-700">
+            Carrera
+            <select
+              value={codigoCarrera}
+              onChange={(event) => setCodigoCarrera(event.target.value)}
+              disabled={cargandoCatalogo || carreras.length === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {cargandoCatalogo && <option value="">Cargando carreras…</option>}
+              {!cargandoCatalogo && carreras.length === 0 && <option value="">Sin carreras disponibles</option>}
+              {carreras.map((carrera) => (
+                <option key={carrera.car_codigo} value={carrera.car_codigo}>
+                  {carrera.nombre}{carrera.sede ? ` · ${carrera.sede}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-semibold text-slate-700">
+            Desde
+            <select
+              value={periodoDesde}
+              onChange={(event) => cambiarPeriodoDesde(event.target.value)}
+              disabled={cargandoDatos || periodosDisponibles.length === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="todos">Primer período</option>
+              {periodosDisponibles.map((anio) => (
+                <option key={anio} value={anio}>{anio}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-semibold text-slate-700">
+            Hasta
+            <select
+              value={periodoHasta}
+              onChange={(event) => cambiarPeriodoHasta(event.target.value)}
+              disabled={cargandoDatos || periodosDisponibles.length === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="todos">Último período</option>
+              {periodosDisponibles.map((anio) => (
+                <option key={anio} value={anio}>{anio}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </header>
+
+      {errorCatalogo && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+          {errorCatalogo}
+        </div>
+      )}
+
+      {sinCarreras && (
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+          La facultad todavía no tiene carreras cargadas en el sistema.
+        </div>
+      )}
+
+      {codigoCarrera && (
+        <section className="space-y-6">
           <div>
-            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-2">
-              {carreraActiva}
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              {carreraSeleccionada?.nombre ?? 'Carrera seleccionada'}
             </p>
-            <h1 className="text-3xl font-bold text-[#0A192F]">Datos de Progresión Curricular</h1>
-            <p className="mt-1 text-sm text-slate-500 max-w-2xl">
-              Caracterización de la distribución de tipos de estado de avance de estudiantes matriculados en 2026, con condición académica de Alumno Regular.
-            </p>
+            <h2 className="mt-1 text-2xl font-bold text-[#0A192F]">Datos curriculares históricos</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-              Cohorte: <span className="text-slate-900">2026</span> <ChevronDown className="size-4 text-slate-400" />
-            </button>
-            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-              <Download className="size-4" /> Descargar Excel
-            </button>
-          </div>
-        </div>
 
-        {/* TABLA 1: Tasa de eficiencia curricular por cohorte */}
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden mt-8">
-          <div className="border-b border-slate-100 px-6 py-4">
-            <h3 className="font-bold text-slate-800 text-lg">Tasa de eficiencia curricular por cohorte</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Distribución de estudiantes según cohorte de ingreso y estado de avance curricular.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FFF9E6]">
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Cohortes / Tasa de Eficiencia</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2021</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2022</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2023</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2024</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2025</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
-                <tr className="bg-slate-50/50">
-                  <td className="py-3.5 px-6 font-bold text-slate-900">Nº Alumnos regulares</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">30</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">48</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">40</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">54</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">59</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Baja (entre 0&lt;60%)</td>
-                  <td className="py-3.5 px-6">0</td>
-                  <td className="py-3.5 px-6">1</td>
-                  <td className="py-3.5 px-6">1</td>
-                  <td className="py-3.5 px-6">2</td>
-                  <td className="py-3.5 px-6">2</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Media (entre 61 y &lt;80%)</td>
-                  <td className="py-3.5 px-6">4</td>
-                  <td className="py-3.5 px-6">6</td>
-                  <td className="py-3.5 px-6">4</td>
-                  <td className="py-3.5 px-6">6</td>
-                  <td className="py-3.5 px-6">1</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Alta (entre 80 &lt;100%)</td>
-                  <td className="py-3.5 px-6">26</td>
-                  <td className="py-3.5 px-6">21</td>
-                  <td className="py-3.5 px-6">8</td>
-                  <td className="py-3.5 px-6">15</td>
-                  <td className="py-3.5 px-6">17</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Eficiente =100%</td>
-                  <td className="py-3.5 px-6">0</td>
-                  <td className="py-3.5 px-6">20</td>
-                  <td className="py-3.5 px-6">27</td>
-                  <td className="py-3.5 px-6">31</td>
-                  <td className="py-3.5 px-6">39</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {cargandoDatos && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex min-h-[220px] items-center justify-center rounded-xl border border-slate-200/80 bg-white shadow-sm"
+            >
+              <span className="animate-pulse text-sm font-medium text-slate-500">
+                Cargando datos curriculares de la carrera…
+              </span>
+            </div>
+          )}
 
-        {/* TABLA 2: Estado de avance por ciclo formativo */}
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 px-6 py-4">
-            <h3 className="font-bold text-slate-800 text-lg">Estado de avance por ciclo formativo</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Número de estudiantes con condición académica de Alumno Regular, matriculados en 2026, por estado de avance según ciclo formativo.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FFF9E6]">
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Cohorte</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Bachillerato</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Licenciatura (pendientes)</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Licenciatura</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Título (pendientes)</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Título</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
-                <tr>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">2021</td>
-                  <td className="py-3.5 px-6">0%</td>
-                  <td className="py-3.5 px-6">13%</td>
-                  <td className="py-3.5 px-6">67%</td>
-                  <td className="py-3.5 px-6">0%</td>
-                  <td className="py-3.5 px-6">20%</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">2022</td>
-                  <td className="py-3.5 px-6">0%</td>
-                  <td className="py-3.5 px-6">10%</td>
-                  <td className="py-3.5 px-6">90%</td>
-                  <td className="py-3.5 px-6">0%</td>
-                  <td className="py-3.5 px-6">0%</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {!cargandoDatos && errorDatos && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+              {errorDatos}
+            </div>
+          )}
 
-        {/* TABLA 3: Asignaturas críticas */}
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 px-6 py-4">
-            <h3 className="font-bold text-slate-800 text-lg">Asignaturas críticas</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Se consideran críticas las asignaturas con reprobación mayor o igual a 30% en al menos 3 de los últimos 5 años, afectando la permanencia, titulación y tiempos de titulación.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FFF9E6]">
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Códigos asignaturas críticas</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Semestre</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2021</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2022</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2023</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2024</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2025</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
-                <tr>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">AAAA111-21</td>
-                  <td className="py-3.5 px-6">1</td>
-                  <td className="py-3.5 px-6">-</td>
-                  <td className="py-3.5 px-6">62,8%</td>
-                  <td className="py-3.5 px-6">55,0%</td>
-                  <td className="py-3.5 px-6">-</td>
-                  <td className="py-3.5 px-6">35,0%</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">AAAA111-21</td>
-                  <td className="py-3.5 px-6">2</td>
-                  <td className="py-3.5 px-6">-</td>
-                  <td className="py-3.5 px-6">-</td>
-                  <td className="py-3.5 px-6">57,1%</td>
-                  <td className="py-3.5 px-6">-</td>
-                  <td className="py-3.5 px-6">-</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {!cargandoDatos && !errorDatos && (
+            <>
+              <TablaIndicadores
+                titulo="Cantidad de estudiantes por tramo de eficiencia curricular"
+                descripcion="Cantidades registradas en el Excel por año y tramo; no se recalculan como porcentajes."
+                indicadores={INDICADORES_EFICIENCIA}
+                filas={eficienciaFiltrada}
+                mensajeVacio="No hay cantidades de eficiencia curricular para el período seleccionado."
+              />
 
-      </div>
+              <TablaAvance
+                titulo="Estado de avance por ciclo formativo"
+                descripcion="Cantidades registradas en el Excel para cada grado o estado de avance disponible."
+                columnas={COLUMNAS_AVANCE}
+                filas={avanceFiltrado}
+                mensajeVacio="No hay cantidades de avance curricular para el período seleccionado."
+              />
+
+              <TablaAsignaturas
+                filas={filasAsignaturas}
+                anios={aniosAsignaturas}
+                mensajeVacio="No hay asignaturas informadas para el período seleccionado."
+              />
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }

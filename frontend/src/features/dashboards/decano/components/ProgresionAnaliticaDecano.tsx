@@ -1,189 +1,463 @@
-import { useState } from 'react';
-import { FileText, ChevronDown, Building2, Download } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2 } from 'lucide-react';
 
-const carreras = [
-  'Ingeniería Civil Acústica',
-  'Ingeniería Civil en Obras Civiles',
-  'Ingeniería en Construcción',
-  'Ingeniería Civil Electrónica',
-  'Ingeniería Civil Industrial',
-  'Ingeniería Naval',
-  'Ingeniería Civil en Informática',
-  'Ingeniería Civil Mecánica',
-  'Ingeniería Plan Común'
+import { ApiError } from '../../../auth/api';
+import { useAuth } from '../../../auth/AuthContext';
+import {
+  obtenerCarrerasDecanatura,
+  obtenerMatriculaCarrera,
+  obtenerProgresionCarrera,
+  type CarreraDecanatura,
+  type FilaMatricula,
+  type FilaProgresion,
+} from '../api';
+
+type LimitePeriodo = 'todos' | number;
+type TipoValor = 'cantidad' | 'porcentaje' | 'decimal';
+
+interface Indicador {
+  titulo: string;
+  llave: string;
+  tipo?: TipoValor;
+}
+
+interface FilaPeriodo {
+  periodo: number;
+  valores: Record<string, number | null>;
+}
+
+interface TablaPeriodosProps {
+  titulo: string;
+  descripcion: string;
+  indicadores: Indicador[];
+  filas: FilaPeriodo[];
+  mensajeVacio: string;
+}
+
+const INDICADORES_MATRICULA: Indicador[] = [
+  { titulo: 'Matrícula total', llave: 'matricula_total' },
+  { titulo: 'Matrícula de mujeres', llave: 'matricula_mujeres' },
+  { titulo: '% Mujeres sobre matrícula total', llave: 'porcentaje_mujeres', tipo: 'porcentaje' },
 ];
 
-export function ProgresionAnaliticaDecano() {
-  const [carreraActiva, setCarreraActiva] = useState('Ingeniería Civil en Informática');
-  const [menuAbierto, setMenuAbierto] = useState(false);
+// Son cantidades entregadas por el Excel. No se interpretan como tasas ni se
+// dividen por vacantes, porque ese denominador no está disponible actualmente.
+const INDICADORES_INGRESOS: Indicador[] = [
+  { titulo: 'Ingresos SUA', llave: 'ingresos_sua' },
+  { titulo: 'Ingresos PACE', llave: 'ingresos_pace' },
+  { titulo: 'Ingresos especiales (RAE)', llave: 'ingresos_rae' },
+  { titulo: 'Ingresos totales', llave: 'ingresos_totales' },
+];
+
+const INDICADORES_RETENCION: Indicador[] = [
+  { titulo: 'Retención de 1er año', llave: 'retencion_a1', tipo: 'porcentaje' },
+  { titulo: 'Retención de 2do año', llave: 'retencion_a2', tipo: 'porcentaje' },
+  { titulo: 'Retención de 3er año', llave: 'retencion_a3', tipo: 'porcentaje' },
+  { titulo: 'Retención de 4to año', llave: 'retencion_a4', tipo: 'porcentaje' },
+  { titulo: 'Retención total', llave: 'retencion_total', tipo: 'porcentaje' },
+];
+
+const INDICADORES_TITULACION: Indicador[] = [
+  { titulo: 'Tasa de titulación temprana (TTT)', llave: 'tasa_titulacion_temprana', tipo: 'porcentaje' },
+  { titulo: 'Tasa de titulación oportuna (TTO)', llave: 'tasa_titulacion_oportuna', tipo: 'porcentaje' },
+  { titulo: 'Tasa de titulación efectiva (TTE)', llave: 'tasa_titulacion_efectiva', tipo: 'porcentaje' },
+  { titulo: 'Duración real (semestres)', llave: 'duracion_real_semestres', tipo: 'decimal' },
+];
+
+const formateadorCantidad = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 0,
+});
+const formateadorDecimal = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 2,
+});
+
+function formatearValor(valor: number | null, tipo: TipoValor = 'cantidad') {
+  if (valor === null || valor === undefined) {
+    return <span className="text-slate-400">-</span>;
+  }
+
+  if (tipo === 'porcentaje') return `${formateadorDecimal.format(valor)}%`;
+  if (tipo === 'decimal') return formateadorDecimal.format(valor);
+  return formateadorCantidad.format(valor);
+}
+
+function obtenerPeriodos(filas: FilaPeriodo[]) {
+  return [...new Set(filas.map((fila) => fila.periodo))].sort((a, b) => a - b);
+}
+
+function TablaPeriodos({
+  titulo,
+  descripcion,
+  indicadores,
+  filas,
+  mensajeVacio,
+}: TablaPeriodosProps) {
+  const periodos = obtenerPeriodos(filas);
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-10 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm md:flex-row md:items-end md:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="flex items-center gap-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
-            <Building2 className="size-4 text-[#FFB800]" />
-            Facultad de Ingeniería
-          </p>
-          <h2 className="text-2xl font-bold text-[#0A192F]">Progresión analítica</h2>
-          
-          {/* Dropdown Selector de Carreras */}
-          <div className="relative mt-2">
-            <button 
-              onClick={() => setMenuAbierto(!menuAbierto)}
-              className="flex w-full md:w-[350px] items-center justify-between rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-left font-bold text-[#0A192F] shadow-sm transition-colors hover:bg-slate-100 focus:outline-none"
-            >
-              <span className="truncate">{carreraActiva}</span>
-              <ChevronDown className={`size-4 text-slate-500 transition-transform ${menuAbierto ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {menuAbierto && (
-              <div className="absolute left-0 top-full z-50 mt-2 w-full md:w-[350px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-                {carreras.map((carrera) => (
-                  <button
-                    key={carrera}
-                    onClick={() => {
-                      setCarreraActiva(carrera);
-                      setMenuAbierto(false);
-                    }}
-                    className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50 ${
-                      carreraActiva === carrera 
-                        ? 'border-l-4 border-[#FFB800] bg-slate-50 font-bold text-[#0A192F]' 
-                        : 'border-l-4 border-transparent font-medium text-slate-600'
-                    }`}
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h3 className="text-lg font-bold text-slate-800">{titulo}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
+      </div>
+
+      {periodos.length === 0 ? (
+        <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-[#FFF9E6]">
+                <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
+                  Indicador
+                </th>
+                {periodos.map((periodo) => (
+                  <th
+                    key={periodo}
+                    className="border-b border-slate-200 px-6 py-3 text-center font-semibold text-slate-700"
                   >
-                    {carrera}
-                  </button>
+                    {periodo}
+                  </th>
                 ))}
-              </div>
-            )}
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-600">
+              {indicadores.map((indicador) => (
+                <tr key={indicador.llave} className="hover:bg-slate-50/60">
+                  <td className="px-6 py-3.5 font-medium text-slate-800">{indicador.titulo}</td>
+                  {periodos.map((periodo) => {
+                    const valor = filas.find((fila) => fila.periodo === periodo)
+                      ?.valores[indicador.llave] ?? null;
+
+                    return (
+                      <td key={periodo} className="px-6 py-3.5 text-center tabular-nums">
+                        {formatearValor(valor, indicador.tipo)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
+    </section>
+  );
+}
 
-        <button className="flex w-fit items-center gap-2 rounded-lg bg-[#0A192F] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#112a4f]">
-          <FileText className="size-4" />
-          Exportar reporte a PDF
-        </button>
-      </div>
+function describirError(error: unknown, contexto: 'catalogo' | 'datos') {
+  if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return contexto === 'catalogo'
+        ? 'La cuenta no tiene un ámbito de facultad válido para consultar carreras.'
+        : 'La carrera seleccionada no pertenece al ámbito autorizado de esta cuenta.';
+    }
+    if (error.status === 404) return 'La carrera seleccionada no está disponible.';
+    return error.message;
+  }
 
-      {/* CONTENEDOR DE DATOS DE LA CARRERA SELECCIONADA */}
-      <div className="space-y-6">
-        
-        {/* Encabezado Dinámico de la Carrera */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  if (error instanceof Error) return error.message;
+  return contexto === 'catalogo'
+    ? 'No fue posible cargar las carreras de la facultad.'
+    : 'No fue posible cargar los indicadores de la carrera.';
+}
+
+export function ProgresionAnaliticaDecano() {
+  const { user } = useAuth();
+  const [facultad, setFacultad] = useState(user?.ambito?.nombre ?? 'Facultad');
+  const [carreras, setCarreras] = useState<CarreraDecanatura[]>([]);
+  const [codigoCarrera, setCodigoCarrera] = useState('');
+  const [matricula, setMatricula] = useState<FilaMatricula[]>([]);
+  const [progresion, setProgresion] = useState<FilaProgresion[]>([]);
+  const [periodoDesde, setPeriodoDesde] = useState<LimitePeriodo>('todos');
+  const [periodoHasta, setPeriodoHasta] = useState<LimitePeriodo>('todos');
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
+  const [cargandoDatos, setCargandoDatos] = useState(false);
+  const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarCarreras = async () => {
+      try {
+        setCargandoCatalogo(true);
+        setErrorCatalogo(null);
+        const respuesta = await obtenerCarrerasDecanatura();
+        if (!activo) return;
+
+        const opciones = respuesta.carreras ?? [];
+        setFacultad(respuesta.facultad?.nombre || user?.ambito?.nombre || 'Facultad');
+        setCarreras(opciones);
+        setCodigoCarrera((actual) => {
+          if (opciones.some((carrera) => carrera.car_codigo === actual)) return actual;
+          return opciones[0]?.car_codigo ?? '';
+        });
+      } catch (error) {
+        if (!activo) return;
+        setCarreras([]);
+        setCodigoCarrera('');
+        setErrorCatalogo(describirError(error, 'catalogo'));
+      } finally {
+        if (activo) setCargandoCatalogo(false);
+      }
+    };
+
+    void cargarCarreras();
+    return () => { activo = false; };
+  }, [user?.ambito?.nombre]);
+
+  useEffect(() => {
+    if (!codigoCarrera) {
+      setMatricula([]);
+      setProgresion([]);
+      setCargandoDatos(false);
+      return;
+    }
+
+    let activo = true;
+
+    const cargarIndicadores = async () => {
+      try {
+        setCargandoDatos(true);
+        setErrorDatos(null);
+        setPeriodoDesde('todos');
+        setPeriodoHasta('todos');
+
+        const [respuestaMatricula, respuestaProgresion] = await Promise.all([
+          obtenerMatriculaCarrera(codigoCarrera),
+          obtenerProgresionCarrera(codigoCarrera),
+        ]);
+        if (!activo) return;
+
+        setMatricula(respuestaMatricula.datos ?? []);
+        setProgresion(respuestaProgresion.datos ?? []);
+      } catch (error) {
+        if (!activo) return;
+        setMatricula([]);
+        setProgresion([]);
+        setErrorDatos(describirError(error, 'datos'));
+      } finally {
+        if (activo) setCargandoDatos(false);
+      }
+    };
+
+    void cargarIndicadores();
+    return () => { activo = false; };
+  }, [codigoCarrera]);
+
+  const carreraSeleccionada = carreras.find((carrera) => carrera.car_codigo === codigoCarrera);
+
+  const filasMatricula = useMemo<FilaPeriodo[]>(() => matricula.map((fila) => ({
+    periodo: fila.anio,
+    valores: {
+      matricula_total: fila.matricula_total,
+      matricula_mujeres: fila.matricula_mujeres,
+      porcentaje_mujeres:
+        fila.matricula_total && fila.matricula_total > 0
+          ? ((fila.matricula_mujeres ?? 0) / fila.matricula_total) * 100
+          : null,
+      ingresos_sua: fila.ingresos_sua,
+      ingresos_pace: fila.ingresos_pace,
+      ingresos_rae: fila.ingresos_rae,
+      ingresos_totales: fila.ingresos_totales,
+    },
+  })), [matricula]);
+
+  const filasProgresion = useMemo<FilaPeriodo[]>(() => progresion.map((fila) => ({
+    periodo: fila.cohorte,
+    valores: {
+      retencion_a1: fila.retencion_a1,
+      retencion_a2: fila.retencion_a2,
+      retencion_a3: fila.retencion_a3,
+      retencion_a4: fila.retencion_a4,
+      retencion_total: fila.retencion_total,
+      tasa_titulacion_temprana: fila.tasa_titulacion_temprana,
+      tasa_titulacion_oportuna: fila.tasa_titulacion_oportuna,
+      tasa_titulacion_efectiva: fila.tasa_titulacion_efectiva,
+      duracion_real_semestres: fila.duracion_real_semestres,
+    },
+  })), [progresion]);
+
+  const periodosDisponibles = useMemo(() => [
+    ...new Set([
+      ...filasMatricula.map((fila) => fila.periodo),
+      ...filasProgresion.map((fila) => fila.periodo),
+    ]),
+  ].sort((a, b) => a - b), [filasMatricula, filasProgresion]);
+
+  const filtrarPeriodo = (filas: FilaPeriodo[]) => filas.filter((fila) => (
+    (periodoDesde === 'todos' || fila.periodo >= periodoDesde)
+    && (periodoHasta === 'todos' || fila.periodo <= periodoHasta)
+  ));
+
+  const cambiarPeriodoDesde = (valor: string) => {
+    const nuevoDesde = valor === 'todos' ? 'todos' : Number(valor);
+    setPeriodoDesde(nuevoDesde);
+
+    if (
+      nuevoDesde !== 'todos'
+      && periodoHasta !== 'todos'
+      && nuevoDesde > periodoHasta
+    ) {
+      setPeriodoHasta(nuevoDesde);
+    }
+  };
+
+  const cambiarPeriodoHasta = (valor: string) => {
+    const nuevoHasta = valor === 'todos' ? 'todos' : Number(valor);
+    setPeriodoHasta(nuevoHasta);
+
+    if (
+      nuevoHasta !== 'todos'
+      && periodoDesde !== 'todos'
+      && nuevoHasta < periodoDesde
+    ) {
+      setPeriodoDesde(nuevoHasta);
+    }
+  };
+
+  const sinCarreras = !cargandoCatalogo && !errorCatalogo && carreras.length === 0;
+
+  return (
+    <div className="mx-auto min-h-screen max-w-[1440px] space-y-8 bg-[#F8FAFC] p-5 sm:p-8 lg:p-10">
+      <header className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+          <Building2 className="size-4 text-[#FFB800]" />
+          {facultad}
+        </p>
+        <h1 className="mt-2 text-3xl font-bold text-[#0A192F]">Progresión analítica</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+          Matrícula, vías de ingreso, retención y titulación de las carreras pertenecientes a la facultad.
+        </p>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(280px,1fr)_180px_180px]">
+          <label className="text-sm font-semibold text-slate-700">
+            Carrera
+            <select
+              value={codigoCarrera}
+              onChange={(event) => setCodigoCarrera(event.target.value)}
+              disabled={cargandoCatalogo || carreras.length === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {cargandoCatalogo && <option value="">Cargando carreras…</option>}
+              {!cargandoCatalogo && carreras.length === 0 && <option value="">Sin carreras disponibles</option>}
+              {carreras.map((carrera) => (
+                <option key={carrera.car_codigo} value={carrera.car_codigo}>
+                  {carrera.nombre}{carrera.sede ? ` · ${carrera.sede}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-semibold text-slate-700">
+            Desde
+            <select
+              value={periodoDesde}
+              onChange={(event) => cambiarPeriodoDesde(event.target.value)}
+              disabled={cargandoDatos || periodosDisponibles.length === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="todos">Primer período</option>
+              {periodosDisponibles.map((anio) => (
+                <option key={anio} value={anio}>{anio}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-semibold text-slate-700">
+            Hasta
+            <select
+              value={periodoHasta}
+              onChange={(event) => cambiarPeriodoHasta(event.target.value)}
+              disabled={cargandoDatos || periodosDisponibles.length === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="todos">Último período</option>
+              {periodosDisponibles.map((anio) => (
+                <option key={anio} value={anio}>{anio}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </header>
+
+      {errorCatalogo && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+          {errorCatalogo}
+        </div>
+      )}
+
+      {sinCarreras && (
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+          La facultad todavía no tiene carreras cargadas en el sistema.
+        </div>
+      )}
+
+      {codigoCarrera && (
+        <section className="space-y-6">
           <div>
-            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-2">
-              {carreraActiva}
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              {carreraSeleccionada?.nombre ?? 'Carrera seleccionada'}
             </p>
-            <h1 className="text-3xl font-bold text-[#0A192F]">Datos de Progresión Analítica</h1>
-            <p className="mt-1 text-sm text-slate-500 max-w-2xl">
-              Matrícula, admisión, retención y titulación organizada por cohorte, con los mismos periodos y métricas del reporte institucional.
-            </p>
+            <h2 className="mt-1 text-2xl font-bold text-[#0A192F]">Indicadores históricos</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-              Cohorte: <span className="text-slate-900">2026</span> <ChevronDown className="size-4 text-slate-400" />
-            </button>
-            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-              <Download className="size-4" /> Descargar Excel
-            </button>
-          </div>
-        </div>
 
-        {/* TABLA 1: Matrícula y admisión por cohorte */}
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden mt-8">
-          <div className="border-b border-slate-100 px-6 py-4">
-            <h3 className="font-bold text-slate-800 text-lg">Matrícula y admisión por cohorte</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FFF9E6]">
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Indicador</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2022</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2023</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2024</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2025</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2026</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Matrícula nueva según cohorte</td>
-                  <td className="py-3.5 px-6">58</td>
-                  <td className="py-3.5 px-6">49</td>
-                  <td className="py-3.5 px-6">60</td>
-                  <td className="py-3.5 px-6">63</td>
-                  <td className="py-3.5 px-6">58</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">% Mujeres</td>
-                  <td className="py-3.5 px-6">95%</td>
-                  <td className="py-3.5 px-6">100%</td>
-                  <td className="py-3.5 px-6">98%</td>
-                  <td className="py-3.5 px-6">92%</td>
-                  <td className="py-3.5 px-6">95%</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Matrícula admisión regular (prueba)</td>
-                  <td className="py-3.5 px-6">51</td>
-                  <td className="py-3.5 px-6">44</td>
-                  <td className="py-3.5 px-6">46</td>
-                  <td className="py-3.5 px-6">51</td>
-                  <td className="py-3.5 px-6">45</td>
-                </tr>
-                <tr className="bg-slate-50/50">
-                  <td className="py-3.5 px-6 font-bold text-slate-900">Matrícula Total</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">345</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">348</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">346</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">326</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">312</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {cargandoDatos && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex min-h-[220px] items-center justify-center rounded-xl border border-slate-200/80 bg-white shadow-sm"
+            >
+              <span className="animate-pulse text-sm font-medium text-slate-500">
+                Cargando indicadores de la carrera…
+              </span>
+            </div>
+          )}
 
-        {/* TABLA 2: Cohortes / Tasa de ocupación por vacante */}
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 px-6 py-4">
-            <h3 className="font-bold text-slate-800 text-lg">Cohortes / Tasa de ocupación por vacante</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FFF9E6]">
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Indicador</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2022</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2023</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2024</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2025</th>
-                  <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2026</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Admisión regular</td>
-                  <td className="py-3.5 px-6">113%</td>
-                  <td className="py-3.5 px-6">98%</td>
-                  <td className="py-3.5 px-6">102%</td>
-                  <td className="py-3.5 px-6">102%</td>
-                  <td className="py-3.5 px-6">100%</td>
-                </tr>
-                <tr>
-                  <td className="py-3.5 px-6 font-medium text-slate-800">Admisión especial PACE</td>
-                  <td className="py-3.5 px-6">100%</td>
-                  <td className="py-3.5 px-6">100%</td>
-                  <td className="py-3.5 px-6">100%</td>
-                  <td className="py-3.5 px-6">100%</td>
-                  <td className="py-3.5 px-6">67%</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+          {!cargandoDatos && errorDatos && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+              {errorDatos}
+            </div>
+          )}
+
+          {!cargandoDatos && !errorDatos && (
+            <>
+              <TablaPeriodos
+                titulo="Matrícula por período"
+                descripcion="Cantidad total de estudiantes y participación de mujeres sobre la matrícula total."
+                indicadores={INDICADORES_MATRICULA}
+                filas={filtrarPeriodo(filasMatricula)}
+                mensajeVacio="No hay datos de matrícula para el período seleccionado."
+              />
+
+              <TablaPeriodos
+                titulo="Ingresos por vía de admisión"
+                descripcion="Cantidades informadas por SUA, PACE, ingreso especial RAE e ingresos totales; no corresponden a tasas de ocupación."
+                indicadores={INDICADORES_INGRESOS}
+                filas={filtrarPeriodo(filasMatricula)}
+                mensajeVacio="No hay cantidades de ingreso para el período seleccionado."
+              />
+
+              <TablaPeriodos
+                titulo="Retención por cohorte"
+                descripcion="Tasas informadas para cada cohorte; los valores faltantes se muestran con un guion."
+                indicadores={INDICADORES_RETENCION}
+                filas={filtrarPeriodo(filasProgresion)}
+                mensajeVacio="No hay datos de retención para la cohorte seleccionada."
+              />
+
+              <TablaPeriodos
+                titulo="Titulación y duración real"
+                descripcion="Valores TTT, TTO, TTE y duración real proporcionados en la carga académica."
+                indicadores={INDICADORES_TITULACION}
+                filas={filtrarPeriodo(filasProgresion)}
+                mensajeVacio="No hay datos de titulación para la cohorte seleccionada."
+              />
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }

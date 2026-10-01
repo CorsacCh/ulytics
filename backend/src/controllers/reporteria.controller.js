@@ -3,8 +3,7 @@ import {
   FactProgresion,
   FactEficiencia,
   FactTitulacion,
-  FactAsignaturaCritica,
-  Carrera
+  FactAsignaturaCritica
 } from '../persistence/models/index.js';
 
 // PostgreSQL devuelve las columnas DECIMAL como string ("85.00"). El gráfico
@@ -18,12 +17,7 @@ const toNumberOrNull = (value) => {
 export const getMatricula = async (req, res) => {
   try {
     const { car_codigo } = req.params;
-
-    // Verificar si la carrera existe
-    const carrera = await Carrera.findOne({ where: { car_codigo } });
-    if (!carrera) {
-      return res.status(404).json({ error: 'Carrera no encontrada' });
-    }
+    const carrera = req.academicCareer;
 
     // Buscar todos los registros de admisión para esta carrera, ordenados por año
     const datosMatricula = await FactAdmision.findAll({
@@ -55,12 +49,7 @@ export const getMatricula = async (req, res) => {
 export const getProgresion = async (req, res) => {
   try {
     const { car_codigo } = req.params;
-
-    // Verificar si la carrera existe
-    const carrera = await Carrera.findOne({ where: { car_codigo } });
-    if (!carrera) {
-      return res.status(404).json({ error: 'Carrera no encontrada' });
-    }
+    const carrera = req.academicCareer;
 
     // Serie histórica por cohorte (retención y titulación), ordenada de forma
     // ascendente para que el eje X del gráfico respete la secuencia temporal.
@@ -107,12 +96,7 @@ export const getProgresion = async (req, res) => {
 export const getCurricular = async (req, res) => {
   try {
     const { car_codigo } = req.params;
-
-    // Verificar si la carrera existe
-    const carrera = await Carrera.findOne({ where: { car_codigo } });
-    if (!carrera) {
-      return res.status(404).json({ error: 'Carrera no encontrada' });
-    }
+    const carrera = req.academicCareer;
 
     // Las tres series comparten la dimensión temporal (año) y se consultan en paralelo.
     const [datosEficiencia, datosTitulacion, datosCriticas] = await Promise.all([

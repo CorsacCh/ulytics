@@ -20,12 +20,20 @@ Ya están conectados a la API y a PostgreSQL:
 - listado, creación, habilitación y deshabilitación de usuarios;
 - roles Administrador, Director, Decano y Autoridad Central;
 - asociación validada entre rol y tipo de ámbito académico;
+- límite de intentos de inicio de sesión por cuenta, independiente de la IP
+  compartida de la red;
+- autorización de reportería según el rol y ámbito académico del usuario;
+- listado de carreras de la facultad autenticada mediante
+  `GET /api/decanatura/carreras`;
 - registro de auditoría para operaciones de usuarios.
 
-Los dashboards académicos, los períodos y la carga de datos continúan siendo
-prototipos visuales. Por ahora solo existe el ámbito institucional inicial; las
-facultades y carreras o programas deben cargarse con información validada antes
-de poder crear usuarios Decano o Director.
+Los dashboards académicos continúan en desarrollo. La reportería del director ya
+consume progresión analítica y curricular desde la API. En Decanatura, las vistas
+de progresión analítica y curricular obtienen las carreras de la facultad autenticada
+y muestran los datos académicos cargados para cada carrera; el Home y el historial
+todavía incluyen datos de demostración.
+Las facultades y carreras o programas deben cargarse con información validada
+antes de poder asignarlas a usuarios Decano o Director.
 
 ## Requisitos para desarrollo local
 
