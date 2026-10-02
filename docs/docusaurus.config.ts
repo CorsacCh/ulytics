@@ -11,7 +11,13 @@ const config: Config = {
   future: {
     v4: true,
   },
+  markdown: {
+    mermaid: true,
+  },
 
+  // 2. Cargar el tema de Mermaid
+  themes: ['@docusaurus/theme-mermaid'],
+  
   // Ajusta estas URLs cuando vayas a desplegar la documentación en producción
   url: 'https://ulytics.uach.cl', 
   baseUrl: '/',
