@@ -11,7 +11,7 @@ import { courseProgress } from './data/courseProgress';
 
 import { ProgresionAnalitica } from './components/ProgresionAnalitica';
 import { ProgresionCurricular } from './components/ProgresionCurricular';
-import { HistorialDescargas } from './components/HistorialDescargas';
+import { ReporteriaDirector } from './components/ReporteriaDirector';
 
 export default function DashboardDirector() {
   const [section, setSection] = useState<Section>('Home');
@@ -23,8 +23,8 @@ export default function DashboardDirector() {
         return <ProgresionAnalitica />;
       case 'Progresión curricular':
         return <ProgresionCurricular />;
-      case 'Historial de descargas':
-        return <HistorialDescargas />;
+      case 'Reportería':
+        return <ReporteriaDirector />;
       case 'Home':
 default:
   return (

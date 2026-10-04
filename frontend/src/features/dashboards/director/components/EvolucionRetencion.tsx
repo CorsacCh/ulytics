@@ -28,7 +28,14 @@ interface RespuestaProgresion {
   datos: FilaProgresion[];
 }
 
-export function EvolucionRetencion() {
+interface Props {
+  // Cuando es true el gráfico se renderiza dentro de la zona oculta de
+  // Reportería, para ser fotografiado por html2canvas. En ese caso se apaga
+  // la animación: no hay nadie mirándola y retrasa la captura.
+  isExportMode?: boolean;
+}
+
+export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
   const { user } = useAuth();
 
   // El director solo puede ver la carrera de su ámbito (tipo PROGRAMA),
@@ -124,8 +131,10 @@ export function EvolucionRetencion() {
       )}
 
       {!loading && !error && data.length > 0 && (
-        <div className="min-h-[300px] flex-1">
-          <ResponsiveContainer width="100%" height="100%">
+        // En exportación el alto es fijo: el ResponsiveContainer mide su
+        // contenedor padre y, si sólo depende de flex, colapsaría a 0 px.
+        <div style={{ height: isExportMode ? 400 : undefined }} className="min-h-[300px] flex-1">
+          <ResponsiveContainer width="100%" height={isExportMode ? 400 : '100%'}>
             <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis
@@ -156,6 +165,7 @@ export function EvolucionRetencion() {
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
                 connectNulls
+                isAnimationActive={!isExportMode}
               />
               <Line
                 type="monotone"
@@ -166,6 +176,7 @@ export function EvolucionRetencion() {
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
                 connectNulls
+                isAnimationActive={!isExportMode}
               />
               <Line
                 type="monotone"
@@ -176,6 +187,7 @@ export function EvolucionRetencion() {
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
                 connectNulls
+                isAnimationActive={!isExportMode}
               />
             </LineChart>
           </ResponsiveContainer>

@@ -1,4 +1,4 @@
-import { ChevronLeft, LayoutDashboard, BarChart3, Settings, Users, FileText, LogOut, BookOpen, Clock, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, LayoutDashboard, BarChart3, Settings, Users, FileText, LogOut, BookOpen, type LucideIcon } from 'lucide-react'
 import ulyticsLogo from '../assets/branding/logo2_ULYTICS.jpeg'
 import type { AuthUser } from '../../features/auth/types';
 
@@ -7,7 +7,7 @@ export type Section =
   | 'Home' 
   | 'Progresión analítica' 
   | 'Progresión curricular' 
-  | 'Historial de descargas'
+  | 'Reportería'
   | 'Dashboard' 
   | 'Períodos académicos' 
   | 'Cargas de datos' 
@@ -25,7 +25,7 @@ const academicLinks: SidebarLink[] = [
   { label: 'Home', icon: LayoutDashboard },
   { label: 'Progresión analítica', icon: BarChart3 },
   { label: 'Progresión curricular', icon: BookOpen },
-  { label: 'Historial de descargas', icon: Clock },
+  { label: 'Reportería', icon: FileText },
 ]
 
 // Opciones para ADMIN

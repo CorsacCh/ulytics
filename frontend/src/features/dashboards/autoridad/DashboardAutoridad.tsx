@@ -9,7 +9,7 @@ import DashboardHeader from '../../../shared/components/dashboard/DashboardHeade
 
 import { ProgresionAnaliticaAutoridad } from './components/ProgresionAnaliticaAutoridad';
 import { ProgresionCurricularAutoridad } from './components/ProgresionCurricularAutoridad';
-import { HistorialDescargasAutoridad } from './components/HistorialDescargasAutoridad';
+import { ReporteriaAutoridad } from './components/ReporteriaAutoridad';
 
 import { institutionalMetrics } from './data/metrics';
 import { facultyRetention, enrollmentTrend, facultyDistribution } from './data/chartData';
@@ -44,8 +44,8 @@ export default function DashboardAutoridad() {
         return <ProgresionAnaliticaAutoridad />;
       case 'Progresión curricular':
         return <ProgresionCurricularAutoridad />;
-      case 'Historial de descargas':
-        return <HistorialDescargasAutoridad />;
+      case 'Reportería':
+        return <ReporteriaAutoridad />;
       case 'Home':
       default:
         return (

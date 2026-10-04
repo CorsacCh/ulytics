@@ -33,4 +33,14 @@
   .font-interface {
     font-family: var(--font-interface);
   }
+
+  /* Zona de vista previa de Reportería: los bloques se apilan con holgura para
+     que html2canvas los capture sin que se corten entre sí en el PDF. */
+  .preview-module {
+    @apply mb-8 break-inside-avoid rounded-xl bg-white p-6 shadow-sm;
+  }
+
+  .preview-module:last-child {
+    @apply mb-0;
+  }
 }

@@ -14,7 +14,7 @@ import { criticalSubjects } from './data/criticalSubjects';
 
 import { ProgresionAnaliticaDecano } from './components/ProgresionAnaliticaDecano';
 import { ProgresionCurricularDecano } from './components/ProgresionCurricularDecano';
-import { HistorialDescargasDecano } from './components/HistorialDescargasDecano';
+import { ReporteriaDecano } from './components/ReporteriaDecano';
 
 export default function Dashboard() {
   const [section, setSection] = useState<Section>('Home');
@@ -26,8 +26,8 @@ export default function Dashboard() {
         return <ProgresionAnaliticaDecano />;
       case 'Progresión curricular':
         return <ProgresionCurricularDecano />;
-      case 'Historial de descargas':
-        return <HistorialDescargasDecano />;
+      case 'Reportería':
+        return <ReporteriaDecano />;
       case 'Home':
       default:
         return (

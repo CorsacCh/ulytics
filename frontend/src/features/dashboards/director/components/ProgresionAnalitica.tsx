@@ -2,6 +2,20 @@ import { useEffect, useState } from 'react';
 import { ApiError, apiRequest } from '../../../auth/api';
 import { useAuth } from '../../../auth/AuthContext';
 import { EvolucionRetencion } from './EvolucionRetencion';
+import {
+  INDICADORES_MATRICULA,
+  INDICADORES_RETENCION,
+  INDICADORES_TITULACION,
+  type FilaPeriodo,
+  type Indicador,
+} from '../data/indicadoresProgresion';
+
+export interface TablaPeriodosProps {
+  titulo: string;
+  descripcion: string;
+  indicadores: Indicador[];
+  filas: FilaPeriodo[];
+}
 
 // Respuesta de GET /api/reporteria/:car_codigo/matricula
 interface FilaMatricula {
@@ -38,62 +52,6 @@ interface RespuestaProgresion {
   datos: FilaProgresion[];
 }
 
-// Un indicador es una fila de la tabla: el título visible y la columna del
-// endpoint que se lee para cada periodo (año o cohorte).
-interface Indicador {
-  titulo: string;
-  llave: string;
-  tipo?: 'numero' | 'porcentaje';
-}
-
-// Dataset ya despivotado: un valor por indicador para cada periodo.
-interface FilaPeriodo {
-  periodo: number;
-  valores: Record<string, number | null>;
-}
-
-interface TablaPeriodosProps {
-  titulo: string;
-  descripcion: string;
-  indicadores: Indicador[];
-  filas: FilaPeriodo[];
-}
-
-const INDICADORES_MATRICULA: Indicador[] = [
-  { titulo: 'Matrícula nueva según cohorte', llave: 'ingresos_totales' },
-  { titulo: 'Matrícula admisión regular (SUA/PAES)', llave: 'ingresos_sua' },
-  { titulo: 'Matrícula admisión especial PACE', llave: 'ingresos_pace' },
-  { titulo: 'Matrícula ingreso Especial RAE', llave: 'ingresos_rae' },
-  { titulo: 'Matrícula Total', llave: 'matricula_total' },
-  { titulo: '% Mujeres (matrícula total)', llave: 'pct_mujeres', tipo: 'porcentaje' },
-];
-
-const INDICADORES_RETENCION: Indicador[] = [
-  { titulo: '1er año por cohorte', llave: 'retencion_a1', tipo: 'porcentaje' },
-  { titulo: '2do año por cohorte', llave: 'retencion_a2', tipo: 'porcentaje' },
-  { titulo: '3er año por cohorte', llave: 'retencion_a3', tipo: 'porcentaje' },
-  { titulo: '4to año por cohorte', llave: 'retencion_a4', tipo: 'porcentaje' },
-  { titulo: 'Retención total', llave: 'retencion_total', tipo: 'porcentaje' },
-];
-
-const INDICADORES_TITULACION: Indicador[] = [
-  {
-    titulo: 'Tasa de titulación temprana (TTT)',
-    llave: 'tasa_titulacion_temprana',
-    tipo: 'porcentaje',
-  },
-  {
-    titulo: 'Tasa de titulación oportuna (TTO)',
-    llave: 'tasa_titulacion_oportuna',
-    tipo: 'porcentaje',
-  },
-  {
-    titulo: 'Tasa de titulación efectiva (TTE)',
-    llave: 'tasa_titulacion_efectiva',
-    tipo: 'porcentaje',
-  },
-  { titulo: 'Tiempo promedio (semestres)', llave: 'duracion_real_semestres' },
-];
 
 function describirError(error: unknown): string {
   if (error instanceof ApiError && error.status === 404) {
@@ -109,7 +67,7 @@ function obtenerPeriodos(filas: FilaPeriodo[]): number[] {
   return [...new Set(filas.map((fila) => fila.periodo))].sort((a, b) => a - b);
 }
 
-function TablaPeriodos({ titulo, descripcion, indicadores, filas }: TablaPeriodosProps) {
+export function TablaPeriodos({ titulo, descripcion, indicadores, filas }: TablaPeriodosProps) {
   const periodos = obtenerPeriodos(filas);
 
   return (
@@ -296,36 +254,42 @@ export function ProgresionAnalitica() {
       )}
 
       {!loading && !error && (
-        <>
+        <div className="space-y-10">
           {/* GRÁFICO: Evolución longitudinal de retención por cohorte */}
-          <section className="grid grid-cols-1 gap-6">
+          <section id="progresion-analitica-evolucion" className="grid grid-cols-1 gap-6">
             <EvolucionRetencion />
           </section>
 
           {/* TABLA: Matrícula y admisión */}
-          <TablaPeriodos
-            titulo="Matrícula y admisión por cohorte"
-            descripcion="Ingresos por vía de admisión y matrícula total registrada en cada año."
-            indicadores={INDICADORES_MATRICULA}
-            filas={filasMatricula}
-          />
+          <div id="progresion-analitica-matricula">
+            <TablaPeriodos
+              titulo="Matrícula y admisión por cohorte"
+              descripcion="Ingresos por vía de admisión y matrícula total registrada en cada año."
+              indicadores={INDICADORES_MATRICULA}
+              filas={filasMatricula}
+            />
+          </div>
 
           {/* TABLA: Cohortes / Tasas de retención */}
-          <TablaPeriodos
-            titulo="Cohortes / Tasas de retención"
-            descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
-            indicadores={INDICADORES_RETENCION}
-            filas={filasProgresion}
-          />
+          <div id="progresion-analitica-retencion">
+            <TablaPeriodos
+              titulo="Cohortes / Tasas de retención"
+              descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
+              indicadores={INDICADORES_RETENCION}
+              filas={filasProgresion}
+            />
+          </div>
 
           {/* TABLA: Titulación y tiempo de egreso */}
-          <TablaPeriodos
-            titulo="Titulación y tiempo de egreso"
-            descripcion="Tasas de titulación y duración real registradas para cada cohorte."
-            indicadores={INDICADORES_TITULACION}
-            filas={filasProgresion}
-          />
-        </>
+          <div id="progresion-analitica-titulacion">
+            <TablaPeriodos
+              titulo="Titulación y tiempo de egreso"
+              descripcion="Tasas de titulación y duración real registradas para cada cohorte."
+              indicadores={INDICADORES_TITULACION}
+              filas={filasProgresion}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
