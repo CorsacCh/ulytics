@@ -50,7 +50,7 @@ export function EficienciaCurricular({
       {mostrarCabecera && (
         <div className="mb-4">
           <h3 className="font-bold text-slate-800 text-lg">
-            Tasa de eficiencia curricular por cohorte
+            Cantidad de estudiantes por tramo de eficiencia
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Distribución de estudiantes de cada cohorte según su tramo de eficiencia.

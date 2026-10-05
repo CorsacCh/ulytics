@@ -3,8 +3,10 @@ import { fileURLToPath } from "node:url";
 import swaggerJsdoc from "swagger-jsdoc";
 
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
+const routePattern = (relativePath) => path.resolve(configDirectory, relativePath).replaceAll('\\', '/');
 
 const swaggerSpec = swaggerJsdoc({
+  failOnErrors: true,
   definition: {
     openapi: "3.0.0",
     info: {
@@ -14,8 +16,8 @@ const swaggerSpec = swaggerJsdoc({
     servers: [{ url: "/api" }],
   },
   apis: [
-    path.resolve(configDirectory, "../routes/*.js"),
-    path.resolve(configDirectory, "../app.js"),
+    routePattern("../routes/*.js"),
+    routePattern("../app.js"),
   ],
 });
 

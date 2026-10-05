@@ -138,7 +138,7 @@ export function ProgresionCurricular() {
           <h1 className="text-3xl font-bold text-[#0A192F]">Datos de Progresión Curricular</h1>
           <p className="mt-1 text-sm text-slate-500 max-w-2xl">
             Distribución de los tipos de estado de avance de estudiantes con condición académica de
-            Alumno Regular, ciclos formativos y asignaturas críticas, según los datos cargados para
+            Alumno Regular, ciclos formativos y asignaturas informadas, según los datos cargados para
             la carrera.
           </p>
         </div>
@@ -168,12 +168,12 @@ export function ProgresionCurricular() {
           {/* TOGGLE GRÁFICO/TABLA: Tasa de eficiencia curricular por cohorte */}
           <div id="progresion-curricular-eficiencia">
             <DataCardView
-              title="Tasa de eficiencia curricular por cohorte"
+              title="Cantidad de estudiantes por tramo de eficiencia"
               description="Distribución de estudiantes de cada cohorte según su tramo de eficiencia."
               chartComponent={<EficienciaCurricular data={eficiencia} mostrarCabecera={false} />}
               tableComponent={
                 <TablaIndicadores
-                  titulo="Tasa de eficiencia curricular por cohorte"
+                  titulo="Cantidad de estudiantes por tramo de eficiencia"
                   descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
                   cabeceraIndicador="Indicador / Cohorte"
                   indicadores={INDICADORES_EFICIENCIA}
@@ -205,11 +205,11 @@ export function ProgresionCurricular() {
           {/* TABLA 3: Asignaturas críticas */}
           <div id="progresion-curricular-criticas">
             <TablaAsignaturasCriticas
-              titulo="Asignaturas críticas"
-              descripcion="Se consideran críticas las asignaturas con reprobación mayor o igual a 30% en al menos 3 de los últimos 5 años, afectando la permanencia, titulación y tiempos de titulación."
+              titulo="Asignaturas informadas en la carga"
+              descripcion="Códigos, semestres y tasas informados en el archivo de origen, sin aplicar una clasificación adicional."
               filas={filasCriticas}
               anios={aniosCriticas}
-              mensajeVacio="Todavía no hay asignaturas críticas cargadas para esta carrera."
+              mensajeVacio="Todavía no hay asignaturas informadas para esta carrera."
             />
           </div>
         </div>

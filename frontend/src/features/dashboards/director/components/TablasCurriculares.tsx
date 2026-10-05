@@ -192,7 +192,7 @@ export function TablaAsignaturasCriticas({
             <thead>
               <tr className="bg-[#FFF9E6]">
                 <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">
-                  Códigos asignaturas críticas
+                  Códigos de asignaturas
                 </th>
                 <th className="py-3 px-6 text-center font-semibold text-slate-700 border-b border-slate-200">
                   Semestre

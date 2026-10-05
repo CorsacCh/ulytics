@@ -4,7 +4,7 @@ import type { Section } from '../../../shared/components/Sidebar'
 import { KpiCard } from '../../../shared/components/dashboard/KpiCard'
 import { BarChart2, BookOpen } from 'lucide-react'
 import { useAuth } from '../../../features/auth/AuthContext'
-import { fetchHomeDashboard, type HomeDashboardData } from '../homeApi'
+import { fetchHomeDashboard, type HomeDashboardData, type FiltrosHomeDirector } from '../homeApi'
 
 import { ProgresionAnalitica } from './components/ProgresionAnalitica'
 import { ProgresionCurricular } from './components/ProgresionCurricular'
@@ -13,6 +13,10 @@ import { ReporteriaDirector } from './components/ReporteriaDirector'
 function describirError(error: unknown): string {
   if (error instanceof Error) return error.message
   return 'No fue posible cargar los datos del panel institucional.'
+}
+
+function mostrarValor(value: number | null, unidad = ''): string {
+  return value === null ? 'Sin datos' : `${value.toLocaleString('es-CL', { maximumFractionDigits: 2 })}${unidad}`
 }
 
 export default function DashboardDirector() {
@@ -26,7 +30,7 @@ export default function DashboardDirector() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Estado dinámico del Home
-  const [cohorte, setCohorte] = useState('2026')
+  const [filtros, setFiltros] = useState<FiltrosHomeDirector>({})
   const [data, setData] = useState<HomeDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +50,7 @@ export default function DashboardDirector() {
       try {
         setLoading(true)
         setError(null)
-        const result = await fetchHomeDashboard(cohorte, carCodigo)
+        const result = await fetchHomeDashboard(filtros)
         if (!activo) return
         setData(result)
       } catch (err) {
@@ -61,7 +65,7 @@ export default function DashboardDirector() {
     return () => {
       activo = false
     }
-  }, [cohorte, carCodigo])
+  }, [filtros, carCodigo])
 
   // El Home es un panel ejecutivo: solo KPIs y resumen. El detalle
   // (eficiencia, comparativa, avance) vive en las pestañas de
@@ -86,23 +90,37 @@ export default function DashboardDirector() {
                   <span className="text-[#FFB800]">🎓</span> DIRECCIÓN DE CARRERA
                 </div>
                 <h1 className="text-3xl font-bold text-[#0A192F]">
-                  {carCodigo ? `Carrera: ${carCodigo}` : 'Panel Institucional'}
+                  {data?.carrera.nombre ?? user?.ambito?.nombre ?? 'Dirección de carrera'}
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   Lectura institucional de la progresión académica y curricular
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <label className="font-medium text-gray-700">Cohorte:</label>
-                <select
-                  value={cohorte}
-                  onChange={(e) => setCohorte(e.target.value)}
-                  className="border-gray-300 rounded p-2 shadow-sm focus:ring-2 focus:ring-[#FFB800]"
-                >
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                </select>
+              <div className="flex flex-wrap items-end gap-4">
+                <label className="text-sm font-medium text-gray-700">
+                  Cohorte
+                  <select
+                    value={filtros.cohorte ?? data?.seleccion.cohorte ?? ''}
+                    onChange={(e) => setFiltros({ ...data?.seleccion, cohorte: Number(e.target.value) })}
+                    disabled={loading || !data?.periodos.cohortes.length}
+                    className="mt-1 block w-full border border-gray-300 rounded p-2 shadow-sm focus:ring-2 focus:ring-[#FFB800] disabled:opacity-60"
+                  >
+                    {!data?.periodos.cohortes.length && <option value="">Sin cohortes</option>}
+                    {data?.periodos.cohortes.map((periodo) => <option key={periodo} value={periodo}>{periodo}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  Año de medición
+                  <select
+                    value={filtros.anio_medicion ?? data?.seleccion.anio_medicion ?? ''}
+                    onChange={(e) => setFiltros({ ...data?.seleccion, anio_medicion: Number(e.target.value) })}
+                    disabled={loading || !data?.periodos.anios_medicion.length}
+                    className="mt-1 block w-full border border-gray-300 rounded p-2 shadow-sm focus:ring-2 focus:ring-[#FFB800] disabled:opacity-60"
+                  >
+                    {!data?.periodos.anios_medicion.length && <option value="">Sin años</option>}
+                    {data?.periodos.anios_medicion.map((periodo) => <option key={periodo} value={periodo}>{periodo}</option>)}
+                  </select>
+                </label>
               </div>
             </div>
 
@@ -113,7 +131,8 @@ export default function DashboardDirector() {
                 role="status"
                 aria-live="polite"
               >
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                  <div className="h-24 bg-gray-200 rounded-lg" />
                   <div className="h-24 bg-gray-200 rounded-lg" />
                   <div className="h-24 bg-gray-200 rounded-lg" />
                   <div className="h-24 bg-gray-200 rounded-lg" />
@@ -138,47 +157,43 @@ export default function DashboardDirector() {
             {!loading && !error && data && (
               <>
                 {/* 2. TARJETAS KPI */}
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                   <KpiCard
-                    label="Matrícula nueva"
-                    value={`${data.kpis.matricula_nueva} alumnos`}
-                    description="Ingresos SUA + PACE + Especiales"
+                    label="Ingresos totales"
+                    value={mostrarValor(data.kpis.ingresos_totales)}
+                    description={`Total informado · Cohorte ${data.seleccion.cohorte ?? '—'}`}
+                    positive
+                    icon={BookOpen}
+                    variant="spacious"
+                  />
+                  <KpiCard
+                    label="Matrícula total"
+                    value={mostrarValor(data.kpis.matricula_total)}
+                    description={`Año de medición ${data.seleccion.anio_medicion ?? '—'}`}
                     positive
                     icon={BookOpen}
                     variant="spacious"
                   />
                   <KpiCard
                     label="Retención de 1er año"
-                    value={
-                      data.kpis.retencion_1er_ano !== null
-                        ? `${data.kpis.retencion_1er_ano}%`
-                        : 'N/A'
-                    }
-                    description="Retención cohorte seleccionada"
+                    value={mostrarValor(data.kpis.retencion_1er_ano, '%')}
+                    description={`Cohorte ${data.seleccion.cohorte ?? '—'}`}
                     positive
                     icon={BarChart2}
                     variant="spacious"
                   />
                   <KpiCard
                     label="Titulación oportuna"
-                    value={
-                      data.kpis.titulacion_oportuna !== null
-                        ? `${data.kpis.titulacion_oportuna}%`
-                        : 'N/A'
-                    }
-                    description="Tasa de titulación oportuna"
+                    value={mostrarValor(data.kpis.titulacion_oportuna, '%')}
+                    description={`TTO · Cohorte ${data.seleccion.cohorte ?? '—'}`}
                     positive
                     icon={BookOpen}
                     variant="spacious"
                   />
                   <KpiCard
-                    label="Tiempo promedio"
-                    value={
-                      data.kpis.tiempo_promedio !== null
-                        ? `${data.kpis.tiempo_promedio} semestres`
-                        : 'N/A'
-                    }
-                    description="Duración real de titulación"
+                    label="Duración real"
+                    value={mostrarValor(data.kpis.tiempo_promedio, ' sem.')}
+                    description={`Cohorte ${data.seleccion.cohorte ?? '—'}`}
                     positive
                     icon={BookOpen}
                     variant="spacious"
@@ -186,43 +201,32 @@ export default function DashboardDirector() {
                 </section>
 
                 {/* SECCIÓN DE RESUMEN EJECUTIVO */}
-                <section className="grid grid-cols-2 gap-6 mt-8">
-                  {/* Widget de Posicionamiento */}
+                <section className="grid gap-6 mt-8 md:grid-cols-2">
+                  {/* Contexto del ámbito autorizado */}
                   <div className="bg-white border rounded-lg shadow-sm p-6 flex flex-col justify-center items-start">
                     <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">
-                      Comparativa Institucional
+                      Ámbito académico
                     </h2>
-                    {data.resumen.top_percentil_retencion !== null ? (
-                      <>
-                        <p className="text-3xl font-extrabold text-blue-600 mb-2">
-                          Top {data.resumen.top_percentil_retencion}%
-                        </p>
-                        <p className="text-gray-600">
-                          Tu carrera se encuentra en el{' '}
-                          {data.resumen.top_percentil_retencion}% superior de
-                          retención institucional para esta cohorte.
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-gray-500">
-                        Datos insuficientes para calcular el ranking de esta
-                        cohorte.
-                      </p>
-                    )}
+                    <p className="text-xl font-bold text-[#0A192F] mb-2">{data.carrera.nombre}</p>
+                    <p className="text-gray-600">Código {data.carrera.codigo}. Los indicadores corresponden a esta carrera.</p>
+                    <p className="mt-3 text-sm text-gray-500">
+                      La cohorte filtra ingresos y progresión; el año de medición filtra matrícula y asignaturas.
+                      “Sin datos” indica que el valor no está disponible en la carga.
+                    </p>
                   </div>
 
-                  {/* Widget de Alertas Académicas */}
+                  {/* Registros informados, sin clasificación automática */}
                   <div className="bg-white border rounded-lg shadow-sm p-6 flex flex-col justify-between items-start">
                     <div>
                       <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        Alertas Curriculares
+                        Asignaturas informadas en la carga
                       </h2>
-                      <p className="text-3xl font-extrabold text-orange-500 mb-2">
-                        {data.resumen.total_asignaturas_criticas} asignaturas
+                      <p className="text-3xl font-extrabold text-blue-600 mb-2">
+                        {mostrarValor(data.resumen.registros_asignaturas_informadas)}
                       </p>
                       <p className="text-gray-600">
-                        registran tasas de reprobación en nivel crítico o de
-                        atención este semestre.
+                        Registros por asignatura y semestre con tasa de reprobación informada
+                        en el año {data.seleccion.anio_medicion ?? '—'}. Una asignatura puede aparecer en más de un semestre.
                       </p>
                     </div>
                     <button

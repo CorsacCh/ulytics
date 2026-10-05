@@ -314,7 +314,19 @@ export function ReporteriaDirector() {
     crearModuloGrafico(
       'chart-evolucion-retencion',
       'Evolución longitudinal de retención',
-      () => <EvolucionRetencion isExportMode />,
+      () => (
+        <EvolucionRetencion
+          isExportMode
+          datos={progresionData.map((fila) => ({
+            cohorte: String(fila.cohorte),
+            retencion1erAno: fila.retencion_a1,
+            retencion2doAno: fila.retencion_a2,
+            retencion3erAno: fila.retencion_a3,
+            retencion4toAno: fila.retencion_a4,
+            retencionTotal: fila.retencion_total,
+          }))}
+        />
+      ),
     ),
     crearModulo(
       'table-evolucion-retencion',
@@ -370,7 +382,7 @@ export function ReporteriaDirector() {
     ),
     crearModuloGrafico(
       'chart-eficiencia-curricular',
-      'Tasa de eficiencia curricular',
+      'Cantidad de estudiantes por tramo de eficiencia',
       () => <EficienciaCurricular data={eficiencia} isExportMode />,
       CATEGORIA_CURRICULAR,
     ),
@@ -380,7 +392,7 @@ export function ReporteriaDirector() {
       datosEficiencia,
       () => (
         <TablaIndicadores
-          titulo="Tasa de eficiencia curricular por cohorte"
+          titulo="Cantidad de estudiantes por tramo de eficiencia"
           descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
           cabeceraIndicador="Indicador / Cohorte"
           indicadores={INDICADORES_EFICIENCIA}
@@ -411,12 +423,12 @@ export function ReporteriaDirector() {
     ),
     crearModulo(
       'table-criticas',
-      'Asignaturas críticas',
+      'Asignaturas informadas en la carga',
       datosCriticas,
       () => (
         <TablaAsignaturasCriticas
-          titulo="Asignaturas críticas"
-          descripcion="Asignaturas con reprobación mayor o igual a 30% en al menos 3 de los últimos 5 años."
+          titulo="Asignaturas informadas en la carga"
+          descripcion="Códigos, semestres y tasas informados en el archivo de origen, sin aplicar una clasificación adicional."
           filas={filasCriticas}
           anios={aniosCriticas}
         />

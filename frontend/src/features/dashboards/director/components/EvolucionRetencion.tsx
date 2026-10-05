@@ -29,6 +29,7 @@ interface RespuestaProgresion {
 }
 
 interface Props {
+  datos?: CohorteRetencion[];
   // Cuando es true el gráfico se renderiza dentro de la zona oculta de
   // Reportería, para ser fotografiado por html2canvas. En ese caso se apaga
   // la animación: no hay nadie mirándola y retrasa la captura.
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export function EvolucionRetencion({
+  datos,
   isExportMode = false,
   mostrarCabecera = true,
 }: Props = {}) {
@@ -54,6 +56,7 @@ export function EvolucionRetencion({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (datos !== undefined) return;
     if (!carCodigo) {
       setLoading(false);
       setError('No se pudo identificar la carrera de la sesión activa.');
@@ -104,7 +107,11 @@ export function EvolucionRetencion({
     return () => {
       activo = false;
     };
-  }, [carCodigo]);
+  }, [carCodigo, datos]);
+
+  const filas = datos ?? data;
+  const cargando = datos === undefined && loading;
+  const errorVisible = datos === undefined ? error : null;
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
@@ -118,7 +125,7 @@ export function EvolucionRetencion({
         </div>
       )}
 
-      {loading && (
+      {cargando && (
         <div
           className="flex min-h-[300px] flex-1 flex-col gap-4 animate-pulse"
           role="status"
@@ -129,13 +136,13 @@ export function EvolucionRetencion({
         </div>
       )}
 
-      {!loading && error && (
+      {!cargando && errorVisible && (
         <div className="flex min-h-[300px] flex-1 items-center justify-center">
-          <span className="text-sm font-medium text-red-600">{error}</span>
+          <span className="text-sm font-medium text-red-600">{errorVisible}</span>
         </div>
       )}
 
-      {!loading && !error && data.length === 0 && (
+      {!cargando && !errorVisible && filas.length === 0 && (
         <div className="flex min-h-[300px] flex-1 items-center justify-center text-center">
           <span className="text-sm font-medium text-slate-500">
             Todavía no hay datos de progresión cargados para esta carrera.
@@ -143,12 +150,12 @@ export function EvolucionRetencion({
         </div>
       )}
 
-      {!loading && !error && data.length > 0 && (
+      {!cargando && !errorVisible && filas.length > 0 && (
         // Alto fijo en todas las vistas: el ResponsiveContainer mide su contenedor
         // padre y, si solo depende de flex, colapsaría a 0 px durante el fade-in.
         <div style={{ height: 400 }} className="min-h-[400px]">
           <ResponsiveContainer width="100%" height={isExportMode ? 400 : '100%'}>
-            <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <LineChart data={filas} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis
                 dataKey="cohorte"
@@ -178,7 +185,7 @@ export function EvolucionRetencion({
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
-                connectNulls
+                connectNulls={false}
                 isAnimationActive={!isExportMode}
               />
               <Line
@@ -189,7 +196,7 @@ export function EvolucionRetencion({
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
-                connectNulls
+                connectNulls={false}
                 isAnimationActive={!isExportMode}
               />
               <Line
@@ -200,7 +207,7 @@ export function EvolucionRetencion({
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
-                connectNulls
+                connectNulls={false}
                 isAnimationActive={!isExportMode}
               />
               <Line
@@ -211,7 +218,7 @@ export function EvolucionRetencion({
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
-                connectNulls
+                connectNulls={false}
                 isAnimationActive={!isExportMode}
               />
 
@@ -226,7 +233,7 @@ export function EvolucionRetencion({
                 strokeWidth={3}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
-                connectNulls
+                connectNulls={false}
                 isAnimationActive={!isExportMode}
               />
             </LineChart>

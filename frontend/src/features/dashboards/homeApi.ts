@@ -1,23 +1,29 @@
-import { apiRequest } from '../auth/api'
+import { apiRequest } from '../auth/api';
 
 export interface HomeDashboardData {
+  carrera: { codigo: string; nombre: string };
+  periodos: { cohortes: number[]; anios_medicion: number[] };
+  seleccion: { cohorte: number | null; anio_medicion: number | null };
   kpis: {
-    matricula_nueva: number
-    retencion_1er_ano: number | null
-    titulacion_oportuna: number | null
-    tiempo_promedio: number | null
-  }
-  resumen: {
-    top_percentil_retencion: number | null
-    total_asignaturas_criticas: number
-  }
+    ingresos_totales: number | null;
+    matricula_total: number | null;
+    retencion_1er_ano: number | null;
+    titulacion_oportuna: number | null;
+    tiempo_promedio: number | null;
+  };
+  resumen: { registros_asignaturas_informadas: number | null };
+}
+
+export interface FiltrosHomeDirector {
+  cohorte?: number | null;
+  anio_medicion?: number | null;
 }
 
 export const fetchHomeDashboard = async (
-  cohorte: string,
-  carCodigo: string,
+  filtros: FiltrosHomeDirector = {},
 ): Promise<HomeDashboardData> => {
-  return apiRequest<HomeDashboardData>(
-    `/api/director/home?cohorte=${encodeURIComponent(cohorte)}&car_codigo=${encodeURIComponent(carCodigo)}`,
-  )
-}
+  const query = new URLSearchParams();
+  if (filtros.cohorte != null) query.set('cohorte', String(filtros.cohorte));
+  if (filtros.anio_medicion != null) query.set('anio_medicion', String(filtros.anio_medicion));
+  return apiRequest<HomeDashboardData>(`/api/director/home?${query}`);
+};
