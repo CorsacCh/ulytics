@@ -6,10 +6,11 @@ import { AuditoriaUsuario } from "./AuditoriaUsuario.js";
 import { Macrounidad } from "./Macrounidad.js";
 import { Carrera } from "./Carrera.js";
 import { CargaDatos } from "./CargaDatos.js";
-import { FactAdmision } from "./FactAdmision.js";
+import { FactIngreso } from "./FactIngreso.js";
+import { FactMatricula } from "./FactMatricula.js";
 import { FactProgresion } from "./FactProgresion.js";
 import { FactEficiencia } from "./FactEficiencia.js";
-import { FactTitulacion } from "./FactTitulacion.js";
+import { FactAvanceCurricular } from "./FactAvanceCurricular.js";
 import { FactAsignaturaCritica } from "./FactAsignaturaCritica.js";
 import { HistorialDescarga } from "./HistorialDescarga.js";
 
@@ -65,4 +66,20 @@ AuditoriaUsuario.belongsTo(Usuario, {
   as: "usuario_afectado"
 });
 
-export { Rol, Permiso, AmbitoAcademico, Usuario, AuditoriaUsuario, Macrounidad, Carrera, CargaDatos, FactAdmision, FactProgresion, FactEficiencia, FactTitulacion, FactAsignaturaCritica, HistorialDescarga };
+export {
+  Rol,
+  Permiso,
+  AmbitoAcademico,
+  Usuario,
+  AuditoriaUsuario,
+  Macrounidad,
+  Carrera,
+  CargaDatos,
+  FactIngreso,
+  FactMatricula,
+  FactProgresion,
+  FactEficiencia,
+  FactAvanceCurricular,
+  FactAsignaturaCritica,
+  HistorialDescarga
+};

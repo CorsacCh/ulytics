@@ -31,7 +31,11 @@ function Celda({ valor, sufijo = '' }: { valor: number | null; sufijo?: string }
     return <span className="text-slate-400">-</span>;
   }
 
-  return <>{`${valor}${sufijo}`}</>;
+  const formateado = new Intl.NumberFormat('es-CL', {
+    maximumFractionDigits: sufijo === '%' ? 0 : 2,
+  }).format(valor);
+
+  return <>{`${formateado}${sufijo}`}</>;
 }
 
 // Indicadores por fila y años por columna (tabla de eficiencia curricular).
@@ -95,7 +99,7 @@ export function TablaIndicadores({
   );
 }
 
-// Años por fila y estados de avance por columna (tabla de titulación por año).
+// Cohortes por fila y categorías porcentuales de avance por columna.
 export function TablaAvance({ titulo, descripcion, columnas, filas }: TablaAvanceProps) {
   const anios = obtenerAnios(filas.map((fila) => fila.periodo));
 
@@ -114,7 +118,7 @@ export function TablaAvance({ titulo, descripcion, columnas, filas }: TablaAvanc
             <thead>
               <tr className="bg-[#FFF9E6]">
                 <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">
-                  Estado de avance
+                  Cohorte
                 </th>
                 {columnas.map((columna) => (
                   <th
@@ -136,6 +140,7 @@ export function TablaAvance({ titulo, descripcion, columnas, filas }: TablaAvanc
                         valor={
                           filas.find((fila) => fila.periodo === anio)?.valores[columna.llave] ?? null
                         }
+                        sufijo={columna.tipo === 'porcentaje' ? '%' : ''}
                       />
                     </td>
                   ))}

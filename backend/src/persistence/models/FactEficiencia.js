@@ -6,17 +6,22 @@ import { CargaDatos } from './CargaDatos.js';
 export const FactEficiencia = sequelize.define('Fact_Eficiencia_Curricular', {
   id_eficiencia: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   car_codigo: { type: DataTypes.STRING(20), allowNull: false },
-  anio: { type: DataTypes.SMALLINT, allowNull: false },
+  cohorte: { type: DataTypes.SMALLINT, allowNull: false },
   nivel_baja: { type: DataTypes.INTEGER },
   nivel_media: { type: DataTypes.INTEGER },
   nivel_alta: { type: DataTypes.INTEGER },
   nivel_eficiente: { type: DataTypes.INTEGER },
   total_alumnos_regulares: { type: DataTypes.INTEGER },
+  estados_datos: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: {}
+  },
   id_carga: { type: DataTypes.INTEGER }
 }, {
   tableName: 'Fact_Eficiencia_Curricular',
   timestamps: false,
-  indexes: [{ unique: true, fields: ['car_codigo', 'anio'] }]
+  indexes: [{ unique: true, fields: ['car_codigo', 'cohorte'] }]
 });
 
 Carrera.hasMany(FactEficiencia, { foreignKey: 'car_codigo' });

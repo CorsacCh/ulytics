@@ -12,10 +12,15 @@ export const FactProgresion = sequelize.define('Fact_Progresion_Academica', {
   retencion_a3: { type: DataTypes.DECIMAL(5, 2) },
   retencion_a4: { type: DataTypes.DECIMAL(5, 2) },
   retencion_total: { type: DataTypes.DECIMAL(5, 2) },
-  tasa_titulacion_temprana: { type: DataTypes.DECIMAL(5, 2) },
+  tasa_titulacion_total: { type: DataTypes.DECIMAL(5, 2) },
   tasa_titulacion_oportuna: { type: DataTypes.DECIMAL(5, 2) },
   tasa_titulacion_efectiva: { type: DataTypes.DECIMAL(5, 2) },
   duracion_real_semestres: { type: DataTypes.DECIMAL(5, 2) },
+  estados_datos: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: {}
+  },
   id_carga: { type: DataTypes.INTEGER }
 }, {
   tableName: 'Fact_Progresion_Academica',

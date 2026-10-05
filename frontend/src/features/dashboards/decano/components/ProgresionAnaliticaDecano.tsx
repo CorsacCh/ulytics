@@ -8,6 +8,7 @@ import {
   obtenerMatriculaCarrera,
   obtenerProgresionCarrera,
   type CarreraDecanatura,
+  type FilaIngreso,
   type FilaMatricula,
   type FilaProgresion,
 } from '../api';
@@ -45,7 +46,7 @@ const INDICADORES_MATRICULA: Indicador[] = [
 const INDICADORES_INGRESOS: Indicador[] = [
   { titulo: 'Ingresos SUA', llave: 'ingresos_sua' },
   { titulo: 'Ingresos PACE', llave: 'ingresos_pace' },
-  { titulo: 'Ingresos especiales (RAE)', llave: 'ingresos_rae' },
+  { titulo: 'Ingresos especiales (RAE)', llave: 'ingresos_especiales' },
   { titulo: 'Ingresos totales', llave: 'ingresos_totales' },
 ];
 
@@ -58,7 +59,7 @@ const INDICADORES_RETENCION: Indicador[] = [
 ];
 
 const INDICADORES_TITULACION: Indicador[] = [
-  { titulo: 'Tasa de titulación temprana (TTT)', llave: 'tasa_titulacion_temprana', tipo: 'porcentaje' },
+  { titulo: 'Tasa de titulación total (TTT)', llave: 'tasa_titulacion_total', tipo: 'porcentaje' },
   { titulo: 'Tasa de titulación oportuna (TTO)', llave: 'tasa_titulacion_oportuna', tipo: 'porcentaje' },
   { titulo: 'Tasa de titulación efectiva (TTE)', llave: 'tasa_titulacion_efectiva', tipo: 'porcentaje' },
   { titulo: 'Duración real (semestres)', llave: 'duracion_real_semestres', tipo: 'decimal' },
@@ -67,8 +68,11 @@ const INDICADORES_TITULACION: Indicador[] = [
 const formateadorCantidad = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 });
-const formateadorDecimal = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 2,
+const formateadorPorcentaje = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 0,
+});
+const formateadorDuracion = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 1,
 });
 
 function formatearValor(valor: number | null, tipo: TipoValor = 'cantidad') {
@@ -76,8 +80,8 @@ function formatearValor(valor: number | null, tipo: TipoValor = 'cantidad') {
     return <span className="text-slate-400">-</span>;
   }
 
-  if (tipo === 'porcentaje') return `${formateadorDecimal.format(valor)}%`;
-  if (tipo === 'decimal') return formateadorDecimal.format(valor);
+  if (tipo === 'porcentaje') return `${formateadorPorcentaje.format(valor)}%`;
+  if (tipo === 'decimal') return formateadorDuracion.format(valor);
   return formateadorCantidad.format(valor);
 }
 
@@ -167,6 +171,7 @@ export function ProgresionAnaliticaDecano() {
   const [facultad, setFacultad] = useState(user?.ambito?.nombre ?? 'Facultad');
   const [carreras, setCarreras] = useState<CarreraDecanatura[]>([]);
   const [codigoCarrera, setCodigoCarrera] = useState('');
+  const [ingresos, setIngresos] = useState<FilaIngreso[]>([]);
   const [matricula, setMatricula] = useState<FilaMatricula[]>([]);
   const [progresion, setProgresion] = useState<FilaProgresion[]>([]);
   const [periodoDesde, setPeriodoDesde] = useState<LimitePeriodo>('todos');
@@ -209,6 +214,7 @@ export function ProgresionAnaliticaDecano() {
 
   useEffect(() => {
     if (!codigoCarrera) {
+      setIngresos([]);
       setMatricula([]);
       setProgresion([]);
       setCargandoDatos(false);
@@ -230,10 +236,12 @@ export function ProgresionAnaliticaDecano() {
         ]);
         if (!activo) return;
 
-        setMatricula(respuestaMatricula.datos ?? []);
+        setIngresos(respuestaMatricula.ingresos_cohorte ?? []);
+        setMatricula(respuestaMatricula.matricula_anual ?? []);
         setProgresion(respuestaProgresion.datos ?? []);
       } catch (error) {
         if (!activo) return;
+        setIngresos([]);
         setMatricula([]);
         setProgresion([]);
         setErrorDatos(describirError(error, 'datos'));
@@ -248,19 +256,22 @@ export function ProgresionAnaliticaDecano() {
 
   const carreraSeleccionada = carreras.find((carrera) => carrera.car_codigo === codigoCarrera);
 
+  const filasIngreso = useMemo<FilaPeriodo[]>(() => ingresos.map((fila) => ({
+    periodo: fila.cohorte,
+    valores: {
+      ingresos_sua: fila.ingresos_sua,
+      ingresos_pace: fila.ingresos_pace,
+      ingresos_especiales: fila.ingresos_especiales,
+      ingresos_totales: fila.ingresos_totales,
+    },
+  })), [ingresos]);
+
   const filasMatricula = useMemo<FilaPeriodo[]>(() => matricula.map((fila) => ({
-    periodo: fila.anio,
+    periodo: fila.anio_medicion,
     valores: {
       matricula_total: fila.matricula_total,
       matricula_mujeres: fila.matricula_mujeres,
-      porcentaje_mujeres:
-        fila.matricula_total && fila.matricula_total > 0
-          ? ((fila.matricula_mujeres ?? 0) / fila.matricula_total) * 100
-          : null,
-      ingresos_sua: fila.ingresos_sua,
-      ingresos_pace: fila.ingresos_pace,
-      ingresos_rae: fila.ingresos_rae,
-      ingresos_totales: fila.ingresos_totales,
+      porcentaje_mujeres: fila.porcentaje_mujeres,
     },
   })), [matricula]);
 
@@ -272,7 +283,7 @@ export function ProgresionAnaliticaDecano() {
       retencion_a3: fila.retencion_a3,
       retencion_a4: fila.retencion_a4,
       retencion_total: fila.retencion_total,
-      tasa_titulacion_temprana: fila.tasa_titulacion_temprana,
+      tasa_titulacion_total: fila.tasa_titulacion_total,
       tasa_titulacion_oportuna: fila.tasa_titulacion_oportuna,
       tasa_titulacion_efectiva: fila.tasa_titulacion_efectiva,
       duracion_real_semestres: fila.duracion_real_semestres,
@@ -282,9 +293,10 @@ export function ProgresionAnaliticaDecano() {
   const periodosDisponibles = useMemo(() => [
     ...new Set([
       ...filasMatricula.map((fila) => fila.periodo),
+      ...filasIngreso.map((fila) => fila.periodo),
       ...filasProgresion.map((fila) => fila.periodo),
     ]),
-  ].sort((a, b) => a - b), [filasMatricula, filasProgresion]);
+  ].sort((a, b) => a - b), [filasIngreso, filasMatricula, filasProgresion]);
 
   const filtrarPeriodo = (filas: FilaPeriodo[]) => filas.filter((fila) => (
     (periodoDesde === 'todos' || fila.periodo >= periodoDesde)
@@ -435,7 +447,7 @@ export function ProgresionAnaliticaDecano() {
                 titulo="Ingresos por vía de admisión"
                 descripcion="Cantidades informadas por SUA, PACE, ingreso especial RAE e ingresos totales; no corresponden a tasas de ocupación."
                 indicadores={INDICADORES_INGRESOS}
-                filas={filtrarPeriodo(filasMatricula)}
+                filas={filtrarPeriodo(filasIngreso)}
                 mensajeVacio="No hay cantidades de ingreso para el período seleccionado."
               />
 

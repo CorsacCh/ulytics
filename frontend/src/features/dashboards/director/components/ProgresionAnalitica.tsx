@@ -3,6 +3,7 @@ import { ApiError, apiRequest } from '../../../auth/api';
 import { useAuth } from '../../../auth/AuthContext';
 import { EvolucionRetencion } from './EvolucionRetencion';
 import {
+  INDICADORES_INGRESOS,
   INDICADORES_MATRICULA,
   INDICADORES_RETENCION,
   INDICADORES_TITULACION,
@@ -18,14 +19,19 @@ export interface TablaPeriodosProps {
 }
 
 // Respuesta de GET /api/reporteria/:car_codigo/matricula
-interface FilaMatricula {
-  anio: number;
+interface FilaIngreso {
+  cohorte: number;
   ingresos_sua: number | null;
   ingresos_pace: number | null;
-  ingresos_rae: number | null;
+  ingresos_especiales: number | null;
   ingresos_totales: number | null;
+}
+
+interface FilaMatricula {
+  anio_medicion: number;
   matricula_total: number | null;
   matricula_mujeres: number | null;
+  porcentaje_mujeres: number | null;
 }
 
 // Respuesta de GET /api/reporteria/:car_codigo/progresion
@@ -36,7 +42,7 @@ interface FilaProgresion {
   retencion_a3: number | null;
   retencion_a4: number | null;
   retencion_total: number | null;
-  tasa_titulacion_temprana: number | null;
+  tasa_titulacion_total: number | null;
   tasa_titulacion_oportuna: number | null;
   tasa_titulacion_efectiva: number | null;
   duracion_real_semestres: number | null;
@@ -44,7 +50,8 @@ interface FilaProgresion {
 
 interface RespuestaMatricula {
   carrera: string;
-  datos: FilaMatricula[];
+  ingresos_cohorte: FilaIngreso[];
+  matricula_anual: FilaMatricula[];
 }
 
 interface RespuestaProgresion {
@@ -66,6 +73,10 @@ function describirError(error: unknown): string {
 function obtenerPeriodos(filas: FilaPeriodo[]): number[] {
   return [...new Set(filas.map((fila) => fila.periodo))].sort((a, b) => a - b);
 }
+
+const formateadorPorcentaje = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 0,
+});
 
 export function TablaPeriodos({ titulo, descripcion, indicadores, filas }: TablaPeriodosProps) {
   const periodos = obtenerPeriodos(filas);
@@ -112,7 +123,9 @@ export function TablaPeriodos({ titulo, descripcion, indicadores, filas }: Tabla
                         {valor === null ? (
                           <span className="text-slate-400">-</span>
                         ) : (
-                          `${valor}${indicador.tipo === 'porcentaje' ? '%' : ''}`
+                          indicador.tipo === 'porcentaje'
+                            ? `${formateadorPorcentaje.format(valor)}%`
+                            : valor
                         )}
                       </td>
                     );
@@ -134,6 +147,7 @@ export function ProgresionAnalitica() {
   // cuyo código es el mismo car_codigo de la tabla Carrera.
   const carCodigo = user?.ambito?.tipo === 'PROGRAMA' ? user.ambito.codigo : null;
 
+  const [ingresoData, setIngresoData] = useState<FilaIngreso[]>([]);
   const [matriculaData, setMatriculaData] = useState<FilaMatricula[]>([]);
   const [progresionData, setProgresionData] = useState<FilaProgresion[]>([]);
   const [carrera, setCarrera] = useState('');
@@ -167,11 +181,13 @@ export function ProgresionAnalitica() {
 
         if (!activo) return;
 
-        setMatriculaData(respuestaMatricula.datos ?? []);
+        setIngresoData(respuestaMatricula.ingresos_cohorte ?? []);
+        setMatriculaData(respuestaMatricula.matricula_anual ?? []);
         setProgresionData(respuestaProgresion.datos ?? []);
         setCarrera(respuestaMatricula.carrera || respuestaProgresion.carrera || '');
       } catch (err) {
         if (!activo) return;
+        setIngresoData([]);
         setMatriculaData([]);
         setProgresionData([]);
         setError(describirError(err));
@@ -187,19 +203,23 @@ export function ProgresionAnalitica() {
     };
   }, [carCodigo]);
 
-  // Despivotamos la respuesta de admisión/matrícula al formato de la tabla.
-  const filasMatricula: FilaPeriodo[] = matriculaData.map((fila) => ({
-    periodo: fila.anio,
+  const filasIngreso: FilaPeriodo[] = ingresoData.map((fila) => ({
+    periodo: fila.cohorte,
     valores: {
       ingresos_totales: fila.ingresos_totales,
       ingresos_sua: fila.ingresos_sua,
       ingresos_pace: fila.ingresos_pace,
-      ingresos_rae: fila.ingresos_rae,
+      ingresos_especiales: fila.ingresos_especiales,
+    },
+  }));
+
+  // La matrícula se organiza por año de medición y no por cohorte de ingreso.
+  const filasMatricula: FilaPeriodo[] = matriculaData.map((fila) => ({
+    periodo: fila.anio_medicion,
+    valores: {
       matricula_total: fila.matricula_total,
-      pct_mujeres:
-        fila.matricula_total && fila.matricula_total > 0
-          ? Math.round(((fila.matricula_mujeres ?? 0) / fila.matricula_total) * 100)
-          : null,
+      matricula_mujeres: fila.matricula_mujeres,
+      porcentaje_mujeres: fila.porcentaje_mujeres,
     },
   }));
 
@@ -212,7 +232,7 @@ export function ProgresionAnalitica() {
       retencion_a3: fila.retencion_a3,
       retencion_a4: fila.retencion_a4,
       retencion_total: fila.retencion_total,
-      tasa_titulacion_temprana: fila.tasa_titulacion_temprana,
+      tasa_titulacion_total: fila.tasa_titulacion_total,
       tasa_titulacion_oportuna: fila.tasa_titulacion_oportuna,
       tasa_titulacion_efectiva: fila.tasa_titulacion_efectiva,
       duracion_real_semestres: fila.duracion_real_semestres,
@@ -260,11 +280,20 @@ export function ProgresionAnalitica() {
             <EvolucionRetencion />
           </section>
 
-          {/* TABLA: Matrícula y admisión */}
+          {/* TABLAS: ingresos por cohorte y matrícula por año de medición */}
           <div id="progresion-analitica-matricula">
             <TablaPeriodos
-              titulo="Matrícula y admisión por cohorte"
-              descripcion="Ingresos por vía de admisión y matrícula total registrada en cada año."
+              titulo="Ingresos por cohorte"
+              descripcion="Cantidades informadas por vía de admisión para cada cohorte de ingreso."
+              indicadores={INDICADORES_INGRESOS}
+              filas={filasIngreso}
+            />
+          </div>
+
+          <div id="progresion-analitica-matricula-anual">
+            <TablaPeriodos
+              titulo="Matrícula anual"
+              descripcion="Matrícula total y participación de mujeres para cada año de medición."
               indicadores={INDICADORES_MATRICULA}
               filas={filasMatricula}
             />

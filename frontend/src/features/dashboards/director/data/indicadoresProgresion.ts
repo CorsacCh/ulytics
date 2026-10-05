@@ -18,13 +18,17 @@ export interface FilaPeriodo {
   valores: Record<string, number | null>;
 }
 
+export const INDICADORES_INGRESOS: Indicador[] = [
+  { titulo: 'Ingresos SUA/PAES', llave: 'ingresos_sua' },
+  { titulo: 'Ingresos PACE', llave: 'ingresos_pace' },
+  { titulo: 'Ingresos especiales (RAE)', llave: 'ingresos_especiales' },
+  { titulo: 'Ingresos totales', llave: 'ingresos_totales' },
+];
+
 export const INDICADORES_MATRICULA: Indicador[] = [
-  { titulo: 'Matrícula nueva según cohorte', llave: 'ingresos_totales'},
-  { titulo: 'Matrícula admisión regular (SUA/PAES)', llave: 'ingresos_sua' },
-  { titulo: 'Matrícula admisión especial PACE', llave: 'ingresos_pace'},
-  { titulo: 'Matrícula ingreso Especial RAE', llave: 'ingresos_rae' },
-  { titulo: 'Matrícula Total', llave: 'matricula_total' },
-  { titulo: '% Mujeres (matrícula total)', llave: 'pct_mujeres', tipo:'porcentaje' },
+  { titulo: 'Matrícula total', llave: 'matricula_total' },
+  { titulo: 'Matrícula de mujeres', llave: 'matricula_mujeres' },
+  { titulo: '% Mujeres sobre matrícula total', llave: 'porcentaje_mujeres', tipo: 'porcentaje' },
 ];
 
 export const INDICADORES_RETENCION: Indicador[] = [
@@ -37,8 +41,8 @@ export const INDICADORES_RETENCION: Indicador[] = [
 
 export const INDICADORES_TITULACION: Indicador[] = [
   {
-    titulo: 'Tasa de titulación temprana (TTT)',
-    llave: 'tasa_titulacion_temprana',
+    titulo: 'Tasa de titulación total (TTT)',
+    llave: 'tasa_titulacion_total',
     tipo: 'porcentaje',
   },
   {

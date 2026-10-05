@@ -6,9 +6,9 @@ import {
   INDICADORES_EFICIENCIA,
   agruparAsignaturasCriticas,
   obtenerAnios,
+  type FilaAvanceCurricular,
   type FilaCritica,
   type FilaEficiencia,
-  type FilaTitulacion,
 } from '../data/curricular';
 import type { FilaPeriodo } from '../data/indicadoresProgresion';
 import {
@@ -21,7 +21,7 @@ import {
 interface RespuestaCurricular {
   carrera: string;
   eficiencia: FilaEficiencia[];
-  titulacion: FilaTitulacion[];
+  avance_curricular: FilaAvanceCurricular[];
   criticas: FilaCritica[];
 }
 
@@ -41,7 +41,7 @@ export function ProgresionCurricular() {
   const carCodigo = user?.ambito?.tipo === 'PROGRAMA' ? user.ambito.codigo : null;
 
   const [eficiencia, setEficiencia] = useState<FilaEficiencia[]>([]);
-  const [titulacion, setTitulacion] = useState<FilaTitulacion[]>([]);
+  const [avance, setAvance] = useState<FilaAvanceCurricular[]>([]);
   const [criticas, setCriticas] = useState<FilaCritica[]>([]);
   const [carrera, setCarrera] = useState('');
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,8 @@ export function ProgresionCurricular() {
         setError(null);
 
         // apiRequest resuelve la URL base (VITE_BACKEND_URL) y envía la cookie de sesión;
-        // las tres series comparten endpoint porque comparten la dimensión año.
+        // Las tres series se consultan juntas, aunque cohortes y años de medición
+        // se mantienen como dimensiones diferentes en la respuesta.
         const respuesta = await apiRequest<RespuestaCurricular>(
           `/api/reporteria/${encodeURIComponent(carCodigo)}/curricular`
         );
@@ -70,14 +71,14 @@ export function ProgresionCurricular() {
         if (!activo) return;
 
         setEficiencia(respuesta.eficiencia ?? []);
-        setTitulacion(respuesta.titulacion ?? []);
+        setAvance(respuesta.avance_curricular ?? []);
         setCriticas(respuesta.criticas ?? []);
         setCarrera(respuesta.carrera ?? '');
       } catch (err) {
         if (!activo) return;
 
         setEficiencia([]);
-        setTitulacion([]);
+        setAvance([]);
         setCriticas([]);
         setError(describirError(err));
       } finally {
@@ -92,9 +93,9 @@ export function ProgresionCurricular() {
     };
   }, [carCodigo]);
 
-  // Despivotamos la eficiencia curricular: el año de la medición es el periodo.
+  // La eficiencia curricular se entrega por cohorte.
   const filasEficiencia: FilaPeriodo[] = eficiencia.map((fila) => ({
-    periodo: fila.anio,
+    periodo: fila.cohorte,
     valores: {
       total_alumnos_regulares: fila.total_alumnos_regulares,
       nivel_baja: fila.nivel_baja,
@@ -104,20 +105,23 @@ export function ProgresionCurricular() {
     },
   }));
 
-  // Despivotamos la titulación por año hacia las columnas fijas de la tabla.
-  const filasAvance: FilaPeriodo[] = titulacion.map((fila) => ({
-    periodo: fila.anio,
+  // Las cinco categorías de avance son porcentajes excluyentes por cohorte.
+  const filasAvance: FilaPeriodo[] = avance.map((fila) => ({
+    periodo: fila.cohorte,
     valores: {
-      bachilleratos: fila.bachilleratos,
-      licenciaturas_asig_pendientes: fila.licenciaturas_asig_pendientes,
-      licenciaturas: fila.licenciaturas,
-      titulados: fila.titulados,
+      porcentaje_bachillerato: fila.porcentaje_bachillerato,
+      porcentaje_licenciatura_con_bachillerato_pendiente:
+        fila.porcentaje_licenciatura_con_bachillerato_pendiente,
+      porcentaje_licenciatura: fila.porcentaje_licenciatura,
+      porcentaje_titulo_con_bachillerato_licenciatura_pendiente:
+        fila.porcentaje_titulo_con_bachillerato_licenciatura_pendiente,
+      porcentaje_titulo: fila.porcentaje_titulo,
     },
   }));
 
   // Las asignaturas críticas llegan una fila por año y se agrupan por asignatura-semestre.
   const filasCriticas = agruparAsignaturasCriticas(criticas);
-  const aniosCriticas = obtenerAnios(criticas.map((critica) => critica.anio));
+  const aniosCriticas = obtenerAnios(criticas.map((critica) => critica.anio_medicion));
 
 
   return (
@@ -131,7 +135,7 @@ export function ProgresionCurricular() {
           <h1 className="text-3xl font-bold text-[#0A192F]">Datos de Progresión Curricular</h1>
           <p className="mt-1 text-sm text-slate-500 max-w-2xl">
             Distribución de los tipos de estado de avance de estudiantes con condición académica de
-            Alumno Regular, grados otorgados y asignaturas críticas, según los datos cargados para
+            Alumno Regular, ciclos formativos y asignaturas críticas, según los datos cargados para
             la carrera.
           </p>
         </div>
@@ -161,8 +165,8 @@ export function ProgresionCurricular() {
           <div id="progresion-curricular-eficiencia">
             <TablaIndicadores
               titulo="Tasa de eficiencia curricular por cohorte"
-              descripcion="Número de estudiantes registrados cada año según su estado de avance curricular."
-              cabeceraIndicador="Indicador / Año"
+              descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
+              cabeceraIndicador="Indicador / Cohorte"
               indicadores={INDICADORES_EFICIENCIA}
               filas={filasEficiencia}
             />
@@ -172,7 +176,7 @@ export function ProgresionCurricular() {
           <div id="progresion-curricular-avance">
             <TablaAvance
               titulo="Estado de avance por ciclo formativo"
-              descripcion="Número de estudiantes por año según el ciclo formativo en que se encuentran."
+              descripcion="Porcentaje de alumnos regulares de cada cohorte en las cinco categorías de avance curricular."
               columnas={COLUMNAS_AVANCE}
               filas={filasAvance}
             />

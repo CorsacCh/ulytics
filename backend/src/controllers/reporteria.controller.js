@@ -1,13 +1,15 @@
 import {
-  FactAdmision,
+  FactIngreso,
+  FactMatricula,
   FactProgresion,
   FactEficiencia,
-  FactTitulacion,
+  FactAvanceCurricular,
   FactAsignaturaCritica
 } from '../persistence/models/index.js';
 
-// PostgreSQL devuelve las columnas DECIMAL como string ("85.00"). El gráfico
-// necesita números (o null para las cohortes que todavía no tienen el dato).
+// PostgreSQL devuelve las columnas DECIMAL como string (por ejemplo, "85.00").
+// La API normaliza conteos y porcentajes, pero conserva null cuando el Excel no
+// contiene un valor informado.
 const toNumberOrNull = (value) => {
   if (value === null || value === undefined) return null;
   const parsed = Number(value);
@@ -19,30 +21,66 @@ export const getMatricula = async (req, res) => {
     const { car_codigo } = req.params;
     const carrera = req.academicCareer;
 
-    // Buscar todos los registros de admisión para esta carrera, ordenados por año
-    const datosMatricula = await FactAdmision.findAll({
-      where: { car_codigo },
-      order: [['anio', 'ASC']],
-      // Seleccionamos solo las columnas que el frontend necesita graficar
-      attributes: [
-        'anio', 
-        'ingresos_sua', 
-        'ingresos_pace', 
-        'ingresos_rae', 
-        'ingresos_totales', 
-        'matricula_total', 
-        'matricula_mujeres'
-      ]
-    });
+    // Ingreso y matrícula usan dimensiones temporales diferentes. Se consultan
+    // y exponen por separado para no presentar el año de cohorte como si fuera
+    // el año de medición de la matrícula.
+    const [datosIngreso, datosMatricula] = await Promise.all([
+      FactIngreso.findAll({
+        where: { car_codigo },
+        order: [['cohorte', 'ASC']],
+        attributes: [
+          'cohorte',
+          'ingresos_sua',
+          'ingresos_pace',
+          'ingresos_especiales',
+          'ingresos_totales',
+          'porcentaje_mujeres',
+          'cobertura_sua',
+          'cobertura_pace',
+          'cobertura_rae',
+          'estados_datos'
+        ],
+        raw: true
+      }),
+      FactMatricula.findAll({
+        where: { car_codigo },
+        order: [['anio_medicion', 'ASC']],
+        attributes: [
+          'anio_medicion',
+          'matricula_total',
+          'matricula_mujeres',
+          'porcentaje_mujeres',
+          'estados_datos'
+        ],
+        raw: true
+      })
+    ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       carrera: carrera.nombre,
-      datos: datosMatricula
+      ingresos_cohorte: datosIngreso.map((fila) => ({
+        cohorte: toNumberOrNull(fila.cohorte),
+        ingresos_sua: toNumberOrNull(fila.ingresos_sua),
+        ingresos_pace: toNumberOrNull(fila.ingresos_pace),
+        ingresos_especiales: toNumberOrNull(fila.ingresos_especiales),
+        ingresos_totales: toNumberOrNull(fila.ingresos_totales),
+        porcentaje_mujeres: toNumberOrNull(fila.porcentaje_mujeres),
+        cobertura_sua: toNumberOrNull(fila.cobertura_sua),
+        cobertura_pace: toNumberOrNull(fila.cobertura_pace),
+        cobertura_rae: toNumberOrNull(fila.cobertura_rae),
+        estados_datos: fila.estados_datos ?? null
+      })),
+      matricula_anual: datosMatricula.map((fila) => ({
+        anio_medicion: toNumberOrNull(fila.anio_medicion),
+        matricula_total: toNumberOrNull(fila.matricula_total),
+        matricula_mujeres: toNumberOrNull(fila.matricula_mujeres),
+        porcentaje_mujeres: toNumberOrNull(fila.porcentaje_mujeres),
+        estados_datos: fila.estados_datos ?? null
+      }))
     });
-
   } catch (error) {
     console.error('Error al obtener datos de matrícula:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -51,8 +89,6 @@ export const getProgresion = async (req, res) => {
     const { car_codigo } = req.params;
     const carrera = req.academicCareer;
 
-    // Serie histórica por cohorte (retención y titulación), ordenada de forma
-    // ascendente para que el eje X del gráfico respete la secuencia temporal.
     const datosProgresion = await FactProgresion.findAll({
       where: { car_codigo },
       order: [['cohorte', 'ASC']],
@@ -63,33 +99,34 @@ export const getProgresion = async (req, res) => {
         'retencion_a3',
         'retencion_a4',
         'retencion_total',
-        'tasa_titulacion_temprana',
+        'tasa_titulacion_total',
         'tasa_titulacion_oportuna',
         'tasa_titulacion_efectiva',
-        'duracion_real_semestres'
+        'duracion_real_semestres',
+        'estados_datos'
       ],
       raw: true
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       carrera: carrera.nombre,
       datos: datosProgresion.map((fila) => ({
-        cohorte: fila.cohorte,
+        cohorte: toNumberOrNull(fila.cohorte),
         retencion_a1: toNumberOrNull(fila.retencion_a1),
         retencion_a2: toNumberOrNull(fila.retencion_a2),
         retencion_a3: toNumberOrNull(fila.retencion_a3),
         retencion_a4: toNumberOrNull(fila.retencion_a4),
         retencion_total: toNumberOrNull(fila.retencion_total),
-        tasa_titulacion_temprana: toNumberOrNull(fila.tasa_titulacion_temprana),
+        tasa_titulacion_total: toNumberOrNull(fila.tasa_titulacion_total),
         tasa_titulacion_oportuna: toNumberOrNull(fila.tasa_titulacion_oportuna),
         tasa_titulacion_efectiva: toNumberOrNull(fila.tasa_titulacion_efectiva),
-        duracion_real_semestres: toNumberOrNull(fila.duracion_real_semestres)
+        duracion_real_semestres: toNumberOrNull(fila.duracion_real_semestres),
+        estados_datos: fila.estados_datos ?? null
       }))
     });
-
   } catch (error) {
     console.error('Error al obtener datos de progresión:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -98,68 +135,90 @@ export const getCurricular = async (req, res) => {
     const { car_codigo } = req.params;
     const carrera = req.academicCareer;
 
-    // Las tres series comparten la dimensión temporal (año) y se consultan en paralelo.
-    const [datosEficiencia, datosTitulacion, datosCriticas] = await Promise.all([
+    const [datosEficiencia, datosAvanceCurricular, datosCriticas] = await Promise.all([
       FactEficiencia.findAll({
         where: { car_codigo },
-        order: [['anio', 'ASC']],
+        order: [['cohorte', 'ASC']],
         attributes: [
-          'anio',
+          'cohorte',
           'total_alumnos_regulares',
           'nivel_baja',
           'nivel_media',
           'nivel_alta',
-          'nivel_eficiente'
+          'nivel_eficiente',
+          'estados_datos'
         ],
         raw: true
       }),
-      FactTitulacion.findAll({
+      FactAvanceCurricular.findAll({
         where: { car_codigo },
-        order: [['anio', 'ASC']],
+        order: [['cohorte', 'ASC']],
         attributes: [
-          'anio',
-          'bachilleratos',
-          'licenciaturas_asig_pendientes',
-          'licenciaturas',
-          'titulados'
+          'cohorte',
+          'porcentaje_bachillerato',
+          'porcentaje_licenciatura_con_bachillerato_pendiente',
+          'porcentaje_licenciatura',
+          'porcentaje_titulo_con_bachillerato_licenciatura_pendiente',
+          'porcentaje_titulo',
+          'estados_datos'
         ],
         raw: true
       }),
       FactAsignaturaCritica.findAll({
         where: { car_codigo },
-        order: [['asig_codigo', 'ASC'], ['semestre', 'ASC'], ['anio', 'ASC']],
-        attributes: ['asig_codigo', 'semestre', 'anio', 'tasa_reprobacion'],
+        order: [
+          ['asig_codigo_base', 'ASC'],
+          ['asig_codigo', 'ASC'],
+          ['semestre', 'ASC'],
+          ['anio_medicion', 'ASC']
+        ],
+        attributes: [
+          'asig_codigo_base',
+          'asig_codigo',
+          'semestre',
+          'anio_medicion',
+          'tasa_reprobacion',
+          'estado_dato'
+        ],
         raw: true
       })
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       carrera: carrera.nombre,
       eficiencia: datosEficiencia.map((fila) => ({
-        anio: fila.anio,
+        cohorte: toNumberOrNull(fila.cohorte),
         total_alumnos_regulares: toNumberOrNull(fila.total_alumnos_regulares),
         nivel_baja: toNumberOrNull(fila.nivel_baja),
         nivel_media: toNumberOrNull(fila.nivel_media),
         nivel_alta: toNumberOrNull(fila.nivel_alta),
-        nivel_eficiente: toNumberOrNull(fila.nivel_eficiente)
+        nivel_eficiente: toNumberOrNull(fila.nivel_eficiente),
+        estados_datos: fila.estados_datos ?? null
       })),
-      titulacion: datosTitulacion.map((fila) => ({
-        anio: fila.anio,
-        bachilleratos: toNumberOrNull(fila.bachilleratos),
-        licenciaturas_asig_pendientes: toNumberOrNull(fila.licenciaturas_asig_pendientes),
-        licenciaturas: toNumberOrNull(fila.licenciaturas),
-        titulados: toNumberOrNull(fila.titulados)
+      avance_curricular: datosAvanceCurricular.map((fila) => ({
+        cohorte: toNumberOrNull(fila.cohorte),
+        porcentaje_bachillerato: toNumberOrNull(fila.porcentaje_bachillerato),
+        porcentaje_licenciatura_con_bachillerato_pendiente: toNumberOrNull(
+          fila.porcentaje_licenciatura_con_bachillerato_pendiente
+        ),
+        porcentaje_licenciatura: toNumberOrNull(fila.porcentaje_licenciatura),
+        porcentaje_titulo_con_bachillerato_licenciatura_pendiente: toNumberOrNull(
+          fila.porcentaje_titulo_con_bachillerato_licenciatura_pendiente
+        ),
+        porcentaje_titulo: toNumberOrNull(fila.porcentaje_titulo),
+        estados_datos: fila.estados_datos ?? null
       })),
       criticas: datosCriticas.map((fila) => ({
+        asig_codigo_base: fila.asig_codigo_base,
         asig_codigo: fila.asig_codigo,
         semestre: toNumberOrNull(fila.semestre),
-        anio: fila.anio,
-        tasa_reprobacion: toNumberOrNull(fila.tasa_reprobacion)
+        anio_medicion: toNumberOrNull(fila.anio_medicion),
+        tasa_reprobacion: toNumberOrNull(fila.tasa_reprobacion),
+        estado_dato: fila.estado_dato ?? null
       }))
     });
-
   } catch (error) {
     console.error('Error en getCurricular:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

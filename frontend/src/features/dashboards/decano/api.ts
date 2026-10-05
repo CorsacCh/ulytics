@@ -15,14 +15,25 @@ export interface RespuestaCarrerasDecanatura {
   carreras: CarreraDecanatura[];
 }
 
-export interface FilaMatricula {
-  anio: number;
+export interface FilaIngreso {
+  cohorte: number;
   ingresos_sua: number | null;
   ingresos_pace: number | null;
-  ingresos_rae: number | null;
+  ingresos_especiales: number | null;
   ingresos_totales: number | null;
+  porcentaje_mujeres: number | null;
+  cobertura_sua: number | null;
+  cobertura_pace: number | null;
+  cobertura_rae: number | null;
+  estados_datos: Record<string, string> | null;
+}
+
+export interface FilaMatricula {
+  anio_medicion: number;
   matricula_total: number | null;
   matricula_mujeres: number | null;
+  porcentaje_mujeres: number | null;
+  estados_datos: Record<string, string> | null;
 }
 
 export interface FilaProgresion {
@@ -32,14 +43,14 @@ export interface FilaProgresion {
   retencion_a3: number | null;
   retencion_a4: number | null;
   retencion_total: number | null;
-  tasa_titulacion_temprana: number | null;
+  tasa_titulacion_total: number | null;
   tasa_titulacion_oportuna: number | null;
   tasa_titulacion_efectiva: number | null;
   duracion_real_semestres: number | null;
 }
 
 export interface FilaEficienciaCurricular {
-  anio: number;
+  cohorte: number;
   total_alumnos_regulares: number | null;
   nivel_baja: number | null;
   nivel_media: number | null;
@@ -48,23 +59,27 @@ export interface FilaEficienciaCurricular {
 }
 
 export interface FilaAvanceCurricular {
-  anio: number;
-  bachilleratos: number | null;
-  licenciaturas_asig_pendientes: number | null;
-  licenciaturas: number | null;
-  titulados: number | null;
+  cohorte: number;
+  porcentaje_bachillerato: number | null;
+  porcentaje_licenciatura_con_bachillerato_pendiente: number | null;
+  porcentaje_licenciatura: number | null;
+  porcentaje_titulo_con_bachillerato_licenciatura_pendiente: number | null;
+  porcentaje_titulo: number | null;
 }
 
 export interface FilaAsignaturaInformada {
+  asig_codigo_base: string;
   asig_codigo: string;
   semestre: number | null;
-  anio: number;
+  anio_medicion: number;
   tasa_reprobacion: number | null;
+  estado_dato: string | null;
 }
 
 interface RespuestaMatricula {
   carrera: string;
-  datos: FilaMatricula[];
+  ingresos_cohorte: FilaIngreso[];
+  matricula_anual: FilaMatricula[];
 }
 
 interface RespuestaProgresion {
@@ -75,7 +90,7 @@ interface RespuestaProgresion {
 export interface RespuestaCurricular {
   carrera: string;
   eficiencia: FilaEficienciaCurricular[];
-  titulacion: FilaAvanceCurricular[];
+  avance_curricular: FilaAvanceCurricular[];
   criticas: FilaAsignaturaInformada[];
 }
 

@@ -17,6 +17,7 @@ type LimitePeriodo = 'todos' | number;
 interface Indicador {
   titulo: string;
   llave: string;
+  tipo?: 'cantidad' | 'porcentaje';
 }
 
 interface FilaPeriodo {
@@ -62,24 +63,29 @@ const INDICADORES_EFICIENCIA: Indicador[] = [
   { titulo: 'Eficiente =100%', llave: 'nivel_eficiente' },
 ];
 
-// El Excel no contiene una columna "Título con pendientes"; por eso no se
-// presenta ni se infiere en esta tabla.
+// Las cinco categorías vienen como porcentajes excluyentes informados en el Excel.
 const COLUMNAS_AVANCE: Indicador[] = [
-  { titulo: 'Bachillerato', llave: 'bachilleratos' },
+  { titulo: 'Bachillerato', llave: 'porcentaje_bachillerato', tipo: 'porcentaje' },
   {
     titulo: 'Licenciatura con asignaturas pendientes de Bachillerato',
-    llave: 'licenciaturas_asig_pendientes',
+    llave: 'porcentaje_licenciatura_con_bachillerato_pendiente',
+    tipo: 'porcentaje',
   },
-  { titulo: 'Licenciatura', llave: 'licenciaturas' },
-  { titulo: 'Título', llave: 'titulados' },
+  { titulo: 'Licenciatura', llave: 'porcentaje_licenciatura', tipo: 'porcentaje' },
+  {
+    titulo: 'Título con pendientes de Bachillerato o Licenciatura',
+    llave: 'porcentaje_titulo_con_bachillerato_licenciatura_pendiente',
+    tipo: 'porcentaje',
+  },
+  { titulo: 'Título', llave: 'porcentaje_titulo', tipo: 'porcentaje' },
 ];
 
 const formateadorCantidad = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 });
 
-const formateadorDecimal = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 2,
+const formateadorPorcentaje = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 0,
 });
 
 function obtenerAnios(anios: number[]) {
@@ -99,21 +105,25 @@ function formatearTasaInformada(valor: number | null) {
     return <span className="text-slate-400">-</span>;
   }
 
-  return `${formateadorDecimal.format(valor)}%`;
+  return `${formateadorPorcentaje.format(valor)}%`;
+}
+
+function formatearIndicador(valor: number | null, tipo: Indicador['tipo'] = 'cantidad') {
+  return tipo === 'porcentaje' ? formatearTasaInformada(valor) : formatearCantidad(valor);
 }
 
 function agruparAsignaturas(filas: FilaAsignaturaInformada[]) {
   const agrupadas = new Map<string, FilaAsignaturaAgrupada>();
 
   filas.forEach((filaOrigen) => {
-    const clave = `${filaOrigen.asig_codigo}-${filaOrigen.semestre ?? 'sin-semestre'}`;
+    const clave = `${filaOrigen.asig_codigo_base}-${filaOrigen.semestre ?? 'sin-semestre'}`;
     const fila = agrupadas.get(clave) ?? {
-      codigo: filaOrigen.asig_codigo,
+      codigo: filaOrigen.asig_codigo_base,
       semestre: filaOrigen.semestre,
       valores: {},
     };
 
-    fila.valores[filaOrigen.anio] = filaOrigen.tasa_reprobacion;
+    fila.valores[filaOrigen.anio_medicion] = filaOrigen.tasa_reprobacion;
     agrupadas.set(clave, fila);
   });
 
@@ -144,7 +154,7 @@ function TablaIndicadores({
             <thead>
               <tr className="bg-[#FFF9E6]">
                 <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
-                  Indicador / Año
+                  Indicador / Cohorte
                 </th>
                 {anios.map((anio) => (
                   <th
@@ -202,7 +212,7 @@ function TablaAvance({
             <thead>
               <tr className="bg-[#FFF9E6]">
                 <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
-                  Año
+                  Cohorte
                 </th>
                 {columnas.map((columna) => (
                   <th
@@ -220,9 +230,10 @@ function TablaAvance({
                   <td className="px-6 py-3.5 font-bold text-slate-900">{anio}</td>
                   {columnas.map((columna) => (
                     <td key={columna.llave} className="px-6 py-3.5 text-center tabular-nums">
-                      {formatearCantidad(
+                      {formatearIndicador(
                         filas.find((fila) => fila.periodo === anio)?.valores[columna.llave]
                           ?? null,
+                        columna.tipo,
                       )}
                     </td>
                   ))}
@@ -380,7 +391,7 @@ export function ProgresionCurricularDecano() {
         if (!activo) return;
 
         setEficiencia(respuesta.eficiencia ?? []);
-        setAvance(respuesta.titulacion ?? []);
+        setAvance(respuesta.avance_curricular ?? []);
         setAsignaturas(respuesta.criticas ?? []);
       } catch (error) {
         if (!activo) return;
@@ -398,7 +409,7 @@ export function ProgresionCurricularDecano() {
   }, [codigoCarrera]);
 
   const filasEficiencia = useMemo<FilaPeriodo[]>(() => eficiencia.map((fila) => ({
-    periodo: fila.anio,
+    periodo: fila.cohorte,
     valores: {
       total_alumnos_regulares: fila.total_alumnos_regulares,
       nivel_baja: fila.nivel_baja,
@@ -409,19 +420,22 @@ export function ProgresionCurricularDecano() {
   })), [eficiencia]);
 
   const filasAvance = useMemo<FilaPeriodo[]>(() => avance.map((fila) => ({
-    periodo: fila.anio,
+    periodo: fila.cohorte,
     valores: {
-      bachilleratos: fila.bachilleratos,
-      licenciaturas_asig_pendientes: fila.licenciaturas_asig_pendientes,
-      licenciaturas: fila.licenciaturas,
-      titulados: fila.titulados,
+      porcentaje_bachillerato: fila.porcentaje_bachillerato,
+      porcentaje_licenciatura_con_bachillerato_pendiente:
+        fila.porcentaje_licenciatura_con_bachillerato_pendiente,
+      porcentaje_licenciatura: fila.porcentaje_licenciatura,
+      porcentaje_titulo_con_bachillerato_licenciatura_pendiente:
+        fila.porcentaje_titulo_con_bachillerato_licenciatura_pendiente,
+      porcentaje_titulo: fila.porcentaje_titulo,
     },
   })), [avance]);
 
   const periodosDisponibles = useMemo(() => obtenerAnios([
-    ...eficiencia.map((fila) => fila.anio),
-    ...avance.map((fila) => fila.anio),
-    ...asignaturas.map((fila) => fila.anio),
+    ...eficiencia.map((fila) => fila.cohorte),
+    ...avance.map((fila) => fila.cohorte),
+    ...asignaturas.map((fila) => fila.anio_medicion),
   ]), [eficiencia, avance, asignaturas]);
 
   const estaEnRango = (periodo: number) => (
@@ -431,9 +445,11 @@ export function ProgresionCurricularDecano() {
 
   const eficienciaFiltrada = filasEficiencia.filter((fila) => estaEnRango(fila.periodo));
   const avanceFiltrado = filasAvance.filter((fila) => estaEnRango(fila.periodo));
-  const asignaturasFiltradas = asignaturas.filter((fila) => estaEnRango(fila.anio));
+  const asignaturasFiltradas = asignaturas.filter((fila) => estaEnRango(fila.anio_medicion));
   const filasAsignaturas = agruparAsignaturas(asignaturasFiltradas);
-  const aniosAsignaturas = obtenerAnios(asignaturasFiltradas.map((fila) => fila.anio));
+  const aniosAsignaturas = obtenerAnios(
+    asignaturasFiltradas.map((fila) => fila.anio_medicion),
+  );
 
   const cambiarPeriodoDesde = (valor: string) => {
     const nuevoDesde = valor === 'todos' ? 'todos' : Number(valor);
@@ -473,7 +489,7 @@ export function ProgresionCurricularDecano() {
         </p>
         <h1 className="mt-2 text-3xl font-bold text-[#0A192F]">Progresión curricular</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          Cantidades de avance curricular y datos de asignaturas informados para las carreras de
+          Eficiencia, avance curricular y datos de asignaturas informados para las carreras de
           la facultad.
         </p>
 
@@ -571,7 +587,7 @@ export function ProgresionCurricularDecano() {
             <>
               <TablaIndicadores
                 titulo="Cantidad de estudiantes por tramo de eficiencia curricular"
-                descripcion="Cantidades registradas en el Excel por año y tramo; no se recalculan como porcentajes."
+                descripcion="Cantidades registradas en el Excel por cohorte y tramo; no se recalculan como porcentajes."
                 indicadores={INDICADORES_EFICIENCIA}
                 filas={eficienciaFiltrada}
                 mensajeVacio="No hay cantidades de eficiencia curricular para el período seleccionado."
@@ -579,10 +595,10 @@ export function ProgresionCurricularDecano() {
 
               <TablaAvance
                 titulo="Estado de avance por ciclo formativo"
-                descripcion="Cantidades registradas en el Excel para cada grado o estado de avance disponible."
+                descripcion="Porcentaje de alumnos regulares por cohorte en cada categoría excluyente de avance curricular."
                 columnas={COLUMNAS_AVANCE}
                 filas={avanceFiltrado}
-                mensajeVacio="No hay cantidades de avance curricular para el período seleccionado."
+                mensajeVacio="No hay porcentajes de avance curricular para el período seleccionado."
               />
 
               <TablaAsignaturas

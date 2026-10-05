@@ -14,11 +14,12 @@ import {
   INDICADORES_EFICIENCIA,
   agruparAsignaturasCriticas,
   obtenerAnios,
+  type FilaAvanceCurricular,
   type FilaCritica,
   type FilaEficiencia,
-  type FilaTitulacion,
 } from '../data/curricular';
 import {
+  INDICADORES_INGRESOS,
   INDICADORES_MATRICULA,
   INDICADORES_RETENCION,
   INDICADORES_TITULACION,
@@ -27,14 +28,19 @@ import {
 import type { FilaExportable } from '../../../../utils/exportUtils';
 
 // Respuestas de /api/reporteria/:car_codigo/{matricula,progresion}
-interface FilaMatricula {
-  anio: number;
+interface FilaIngreso {
+  cohorte: number;
   ingresos_sua: number | null;
   ingresos_pace: number | null;
-  ingresos_rae: number | null;
+  ingresos_especiales: number | null;
   ingresos_totales: number | null;
+}
+
+interface FilaMatricula {
+  anio_medicion: number;
   matricula_total: number | null;
   matricula_mujeres: number | null;
+  porcentaje_mujeres: number | null;
 }
 
 interface FilaProgresion {
@@ -44,7 +50,7 @@ interface FilaProgresion {
   retencion_a3: number | null;
   retencion_a4: number | null;
   retencion_total: number | null;
-  tasa_titulacion_temprana: number | null;
+  tasa_titulacion_total: number | null;
   tasa_titulacion_oportuna: number | null;
   tasa_titulacion_efectiva: number | null;
   duracion_real_semestres: number | null;
@@ -52,7 +58,8 @@ interface FilaProgresion {
 
 interface RespuestaMatricula {
   carrera: string;
-  datos: FilaMatricula[];
+  ingresos_cohorte: FilaIngreso[];
+  matricula_anual: FilaMatricula[];
 }
 
 interface RespuestaProgresion {
@@ -63,7 +70,7 @@ interface RespuestaProgresion {
 interface RespuestaCurricular {
   carrera: string;
   eficiencia: FilaEficiencia[];
-  titulacion: FilaTitulacion[];
+  avance_curricular: FilaAvanceCurricular[];
   criticas: FilaCritica[];
 }
 
@@ -100,10 +107,11 @@ export function ReporteriaDirector() {
   const { user } = useAuth();
   const carCodigo = user?.ambito?.tipo === 'PROGRAMA' ? user.ambito.codigo : null;
 
+  const [ingresoData, setIngresoData] = useState<FilaIngreso[]>([]);
   const [matriculaData, setMatriculaData] = useState<FilaMatricula[]>([]);
   const [progresionData, setProgresionData] = useState<FilaProgresion[]>([]);
   const [eficiencia, setEficiencia] = useState<FilaEficiencia[]>([]);
-  const [avance, setAvance] = useState<FilaTitulacion[]>([]);
+  const [avance, setAvance] = useState<FilaAvanceCurricular[]>([]);
   const [criticas, setCriticas] = useState<FilaCritica[]>([]);
   const [carrera, setCarrera] = useState('');
   const [loading, setLoading] = useState(true);
@@ -136,10 +144,11 @@ export function ReporteriaDirector() {
         ]);
 
         if (!activo) return;
-        setMatriculaData(matricula.datos ?? []);
+        setIngresoData(matricula.ingresos_cohorte ?? []);
+        setMatriculaData(matricula.matricula_anual ?? []);
         setProgresionData(progresion.datos ?? []);
         setEficiencia(curricular.eficiencia ?? []);
-        setAvance(curricular.titulacion ?? []);
+        setAvance(curricular.avance_curricular ?? []);
         setCriticas(curricular.criticas ?? []);
         setCarrera(matricula.carrera || progresion.carrera || curricular.carrera || '');
       } catch (err) {
@@ -164,25 +173,29 @@ export function ReporteriaDirector() {
       retencion_a3: fila.retencion_a3,
       retencion_a4: fila.retencion_a4,
       retencion_total: fila.retencion_total,
-      tasa_titulacion_temprana: fila.tasa_titulacion_temprana,
+      tasa_titulacion_total: fila.tasa_titulacion_total,
       tasa_titulacion_oportuna: fila.tasa_titulacion_oportuna,
       tasa_titulacion_efectiva: fila.tasa_titulacion_efectiva,
       duracion_real_semestres: fila.duracion_real_semestres,
     },
   }));
 
-  const filasMatricula: FilaPeriodo[] = matriculaData.map((fila) => ({
-    periodo: fila.anio,
+  const filasIngreso: FilaPeriodo[] = ingresoData.map((fila) => ({
+    periodo: fila.cohorte,
     valores: {
       ingresos_sua: fila.ingresos_sua,
       ingresos_pace: fila.ingresos_pace,
-      ingresos_rae: fila.ingresos_rae,
+      ingresos_especiales: fila.ingresos_especiales,
       ingresos_totales: fila.ingresos_totales,
+    },
+  }));
+
+  const filasMatricula: FilaPeriodo[] = matriculaData.map((fila) => ({
+    periodo: fila.anio_medicion,
+    valores: {
       matricula_total: fila.matricula_total,
-      pct_mujeres:
-        fila.matricula_total && fila.matricula_mujeres !== null
-          ? Number(((fila.matricula_mujeres / fila.matricula_total) * 100).toFixed(1))
-          : null,
+      matricula_mujeres: fila.matricula_mujeres,
+      porcentaje_mujeres: fila.porcentaje_mujeres,
     },
   }));
 
@@ -202,26 +215,31 @@ export function ReporteriaDirector() {
     'Retención total': fila.retencion_total,
   }));
 
-  const datosMatricula: FilaExportable[] = matriculaData.map((fila) => ({
-    Año: fila.anio,
+  const datosIngreso: FilaExportable[] = ingresoData.map((fila) => ({
+    Cohorte: fila.cohorte,
     'Ingresos SUA/PAES': fila.ingresos_sua,
     'Ingresos PACE': fila.ingresos_pace,
-    'Ingresos RAE': fila.ingresos_rae,
+    'Ingresos especiales (RAE)': fila.ingresos_especiales,
     'Ingresos totales': fila.ingresos_totales,
+  }));
+
+  const datosMatricula: FilaExportable[] = matriculaData.map((fila) => ({
+    Año: fila.anio_medicion,
     'Matrícula total': fila.matricula_total,
     'Matrícula mujeres': fila.matricula_mujeres,
+    'Mujeres sobre matrícula total (%)': fila.porcentaje_mujeres,
   }));
 
   const datosTitulacion: FilaExportable[] = progresionData.map((fila) => ({
     Cohorte: fila.cohorte,
-    'Titulación temprana (TTT)': fila.tasa_titulacion_temprana,
+    'Titulación total (TTT)': fila.tasa_titulacion_total,
     'Titulación oportuna (TTO)': fila.tasa_titulacion_oportuna,
     'Titulación efectiva (TTE)': fila.tasa_titulacion_efectiva,
     'Duración real (semestres)': fila.duracion_real_semestres,
   }));
 
   const filasEficiencia: FilaPeriodo[] = eficiencia.map((fila) => ({
-    periodo: fila.anio,
+    periodo: fila.cohorte,
     valores: {
       total_alumnos_regulares: fila.total_alumnos_regulares,
       nivel_baja: fila.nivel_baja,
@@ -232,20 +250,23 @@ export function ReporteriaDirector() {
   }));
 
   const filasAvance: FilaPeriodo[] = avance.map((fila) => ({
-    periodo: fila.anio,
+    periodo: fila.cohorte,
     valores: {
-      bachilleratos: fila.bachilleratos,
-      licenciaturas_asig_pendientes: fila.licenciaturas_asig_pendientes,
-      licenciaturas: fila.licenciaturas,
-      titulados: fila.titulados,
+      porcentaje_bachillerato: fila.porcentaje_bachillerato,
+      porcentaje_licenciatura_con_bachillerato_pendiente:
+        fila.porcentaje_licenciatura_con_bachillerato_pendiente,
+      porcentaje_licenciatura: fila.porcentaje_licenciatura,
+      porcentaje_titulo_con_bachillerato_licenciatura_pendiente:
+        fila.porcentaje_titulo_con_bachillerato_licenciatura_pendiente,
+      porcentaje_titulo: fila.porcentaje_titulo,
     },
   }));
 
   const filasCriticas = agruparAsignaturasCriticas(criticas);
-  const aniosCriticas = obtenerAnios(criticas.map((critica) => critica.anio));
+  const aniosCriticas = obtenerAnios(criticas.map((critica) => critica.anio_medicion));
 
   const datosEficiencia: FilaExportable[] = eficiencia.map((fila) => ({
-    Año: fila.anio,
+    Cohorte: fila.cohorte,
     'Nº Alumnos regulares': fila.total_alumnos_regulares,
     'Nivel baja (0<60%)': fila.nivel_baja,
     'Nivel media (61-<80%)': fila.nivel_media,
@@ -254,17 +275,21 @@ export function ReporteriaDirector() {
   }));
 
   const datosAvance: FilaExportable[] = avance.map((fila) => ({
-    Año: fila.anio,
-    Bachillerato: fila.bachilleratos,
-    'Lic. con asignaturas pendientes': fila.licenciaturas_asig_pendientes,
-    Licenciatura: fila.licenciaturas,
-    Título: fila.titulados,
+    Cohorte: fila.cohorte,
+    'Bachillerato (%)': fila.porcentaje_bachillerato,
+    'Lic. con Bachillerato pendiente (%)':
+      fila.porcentaje_licenciatura_con_bachillerato_pendiente,
+    'Licenciatura (%)': fila.porcentaje_licenciatura,
+    'Título con ciclos anteriores pendientes (%)':
+      fila.porcentaje_titulo_con_bachillerato_licenciatura_pendiente,
+    'Título (%)': fila.porcentaje_titulo,
   }));
 
   const datosCriticas: FilaExportable[] = criticas.map((fila) => ({
-    Asignatura: fila.asig_codigo,
+    'Código base': fila.asig_codigo_base,
+    'Código completo': fila.asig_codigo,
     Semestre: fila.semestre,
-    Año: fila.anio,
+    Año: fila.anio_medicion,
     'Tasa de reprobación (%)': fila.tasa_reprobacion,
   }));
 
@@ -276,13 +301,26 @@ export function ReporteriaDirector() {
       () => <EvolucionRetencion isExportMode />,
     ),
     crearModulo(
+      'reporteria-ingresos',
+      'Ingresos por cohorte',
+      datosIngreso,
+      () => (
+        <TablaPeriodos
+          titulo="Ingresos por cohorte"
+          descripcion="Cantidades informadas por vía de admisión para cada cohorte de ingreso."
+          indicadores={INDICADORES_INGRESOS}
+          filas={filasIngreso}
+        />
+      ),
+    ),
+    crearModulo(
       'reporteria-matricula',
-      'Matrícula y admisión por cohorte',
+      'Matrícula anual',
       datosMatricula,
       () => (
           <TablaPeriodos
-            titulo="Matrícula y admisión por cohorte"
-            descripcion="Ingresos por vía de admisión y matrícula total registrada en cada año."
+            titulo="Matrícula anual"
+            descripcion="Matrícula total y participación de mujeres para cada año de medición."
             indicadores={INDICADORES_MATRICULA}
             filas={filasMatricula}
           />
@@ -321,8 +359,8 @@ export function ReporteriaDirector() {
       () => (
         <TablaIndicadores
           titulo="Tasa de eficiencia curricular por cohorte"
-          descripcion="Número de estudiantes registrados cada año según su estado de avance curricular."
-          cabeceraIndicador="Indicador / Año"
+          descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
+          cabeceraIndicador="Indicador / Cohorte"
           indicadores={INDICADORES_EFICIENCIA}
           filas={filasEficiencia}
         />
@@ -336,7 +374,7 @@ export function ReporteriaDirector() {
       () => (
         <TablaAvance
           titulo="Estado de avance por ciclo formativo"
-          descripcion="Número de estudiantes por año según el ciclo formativo en que se encuentran."
+          descripcion="Porcentaje de alumnos regulares de cada cohorte en las cinco categorías de avance curricular."
           columnas={COLUMNAS_AVANCE}
           filas={filasAvance}
         />
