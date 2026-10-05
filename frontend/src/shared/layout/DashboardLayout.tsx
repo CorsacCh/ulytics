@@ -18,7 +18,7 @@ export function DashboardLayout({ section, open, onToggle, onNavigate, children 
   if (!user) return null
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#F5F7FA]">
+    <div className="fixed inset-0 flex w-full overflow-hidden bg-[#F5F7FA]">
       <Sidebar
         section={section}
         open={open}
@@ -28,7 +28,7 @@ export function DashboardLayout({ section, open, onToggle, onNavigate, children 
         onLogout={() => void logout()}
       />
       
-      <div className="flex-1 w-full lg:w-auto overflow-hidden flex flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Botón de menú móvil del equipo */}
         {!open && (
           <button
@@ -42,7 +42,7 @@ export function DashboardLayout({ section, open, onToggle, onNavigate, children 
         )}
         
         {/* Contenedor principal con tu diseño */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {children}
         </main>
       </div>

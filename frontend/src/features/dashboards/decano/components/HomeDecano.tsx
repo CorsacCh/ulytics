@@ -13,6 +13,8 @@ import {
 import { Building2, GraduationCap, LogIn, UserRound, UsersRound } from 'lucide-react';
 
 import { ApiError } from '../../../auth/api';
+import { HomeCurricularDecano } from './HomeCurricularDecano';
+import { obtenerAniosMedicionHome } from '../homeCurricular';
 import {
   obtenerDatosFacultadDecanatura,
   type DatosCarreraDecanatura,
@@ -102,9 +104,7 @@ export function HomeDecano() {
             ...item.avance.map((fila) => fila.cohorte),
           ]),
         );
-        const anios = obtenerPeriodos(
-          carga.datos.flatMap((item) => item.matriculas.map((fila) => fila.anio_medicion)),
-        );
+        const anios = obtenerAniosMedicionHome(carga.datos);
 
         setFacultad(carga.facultad.nombre || carga.facultad.codigo);
         setDatos(carga.datos);
@@ -137,10 +137,7 @@ export function HomeDecano() {
   );
 
   const aniosDisponibles = useMemo(
-    () =>
-      obtenerPeriodos(
-        datos.flatMap((item) => item.matriculas.map((fila) => fila.anio_medicion)),
-      ),
+    () => obtenerAniosMedicionHome(datos),
     [datos],
   );
 
@@ -167,7 +164,7 @@ export function HomeDecano() {
 
   const evolucionMatricula = useMemo(
     () =>
-      aniosDisponibles.map((anio) => {
+      obtenerPeriodos(datos.flatMap((item) => item.matriculas.map((fila) => fila.anio_medicion))).map((anio) => {
         const filas = datos.flatMap((item) =>
           item.matriculas.filter((fila) => fila.anio_medicion === anio),
         );
@@ -177,7 +174,7 @@ export function HomeDecano() {
           matricula_mujeres: sumarInformados(filas.map((fila) => fila.matricula_mujeres)),
         };
       }),
-    [aniosDisponibles, datos],
+    [datos],
   );
 
   const evolucionIngresos = useMemo(
@@ -271,6 +268,10 @@ export function HomeDecano() {
             <p className="mt-1 text-xs text-slate-500">Según la facultad asociada al usuario.</p>
           </div>
         </div>
+        <p className="mt-4 text-xs leading-5 text-slate-500">
+          La cohorte selecciona ingresos, progresión, eficiencia y avance curricular.
+          El año de medición selecciona matrícula y asignaturas; son filtros independientes.
+        </p>
       </header>
 
       {cargando && (
@@ -460,6 +461,11 @@ export function HomeDecano() {
               </table>
             </div>
           </section>
+          <HomeCurricularDecano
+            datos={datos}
+            cohorte={cohorteSeleccionada}
+            anioMedicion={anioSeleccionado}
+          />
         </>
       )}
     </div>

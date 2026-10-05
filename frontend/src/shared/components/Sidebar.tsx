@@ -53,7 +53,7 @@ export function Sidebar({ section, open, onToggle, onNavigate, user, onLogout }:
 
   return (
     <aside 
-      className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-[#004d99]/40 bg-[#0A192F] backdrop-blur-xl text-white shadow-xl transition-all duration-300 lg:sticky lg:top-0 ${
+      className={`fixed left-0 top-0 z-50 flex h-full w-72 flex-col border-r border-[#004d99]/40 bg-[#0A192F] backdrop-blur-xl text-white shadow-xl transition-all duration-300 lg:sticky lg:top-0 ${
         open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}
     >
