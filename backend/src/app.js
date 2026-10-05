@@ -4,6 +4,8 @@ import morgan from "morgan";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger.js";
 import authRoutes from "./routes/auth.routes.js";
 import adminUserRoutes from "./routes/admin-users.routes.js";
 import cargaRoutes from './routes/carga.routes.js';
@@ -46,6 +48,30 @@ app.use(
   })
 );
 
+app.use("/api-docs", (_request, response, next) => {
+  response.removeHeader("Content-Security-Policy");
+  next();
+});
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Comprueba el estado de la API
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: La API está disponible
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ */
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
 });
