@@ -24,6 +24,9 @@ interface ReporteriaViewProps {
   etiqueta: string;
   subtitulo: string;
   descripcionHistorial: string;
+  configuracion?: ReactNode;
+  formatosDisponibles?: FormatoExportable[];
+  etiquetaBotonPdf?: string;
   loading?: boolean;
   error?: string | null;
 }
@@ -42,6 +45,9 @@ export function ReporteriaView({
   etiqueta,
   subtitulo,
   descripcionHistorial,
+  configuracion,
+  formatosDisponibles = ['pdf', 'excel'],
+  etiquetaBotonPdf = 'Exportar a PDF',
   loading = false,
   error = null,
 }: ReporteriaViewProps) {
@@ -49,7 +55,11 @@ export function ReporteriaView({
   const [exportando, setExportando] = useState<FormatoExportable | null>(null);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
 
-  const todosSeleccionados = modulos.length > 0 && seleccionados.length === modulos.length;
+  const cantidadSeleccionadosDisponibles = modulos.filter((modulo) =>
+    seleccionados.includes(modulo.id),
+  ).length;
+  const todosSeleccionados =
+    modulos.length > 0 && cantidadSeleccionadosDisponibles === modulos.length;
   const categorias = [...new Set(modulos.map((modulo) => modulo.categoria))];
 
   const alternar = (id: string) => {
@@ -115,7 +125,8 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
       setExportando(null);
     }
   };
-const botonesDeshabilitados = exportando !== null || seleccionados.length === 0;
+  const botonesDeshabilitados =
+    exportando !== null || cantidadSeleccionadosDisponibles === 0 || loading || Boolean(error);
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-8 bg-[#F8FAFC] p-5 sm:p-8 lg:p-10">
@@ -127,6 +138,10 @@ const botonesDeshabilitados = exportando !== null || seleccionados.length === 0;
 
       {/* ZONA 1: configuración del reporte */}
       <section className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+        {configuracion && (
+          <div className="mb-8 border-b border-slate-200 pb-8">{configuracion}</div>
+        )}
+
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-lg font-bold text-slate-800">Selecciona el contenido</h2>
           <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#004d99] hover:text-[#003366]">
@@ -187,22 +202,26 @@ const botonesDeshabilitados = exportando !== null || seleccionados.length === 0;
         {mensajeError && <p className="mt-4 text-sm font-medium text-red-600">{mensajeError}</p>}
 
         <div className="mt-8 flex flex-wrap gap-4 border-t border-slate-100 pt-6">
-          <button
-            type="button"
-            onClick={() => manejarExportar('pdf')}
-            disabled={botonesDeshabilitados}
-            className="rounded-lg bg-[#004d99] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-[#003366] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {exportando === 'pdf' ? 'Generando PDF...' : 'Exportar a PDF'}
-          </button>
-          <button
-            type="button"
-            onClick={() => manejarExportar('excel')}
-            disabled={botonesDeshabilitados}
-            className="rounded-lg bg-[#2D7C5E] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-[#236349] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {exportando === 'excel' ? 'Generando Excel...' : 'Exportar a Excel'}
-          </button>
+          {formatosDisponibles.includes('pdf') && (
+            <button
+              type="button"
+              onClick={() => manejarExportar('pdf')}
+              disabled={botonesDeshabilitados}
+              className="rounded-lg bg-[#004d99] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-[#003366] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {exportando === 'pdf' ? 'Generando PDF...' : etiquetaBotonPdf}
+            </button>
+          )}
+          {formatosDisponibles.includes('excel') && (
+            <button
+              type="button"
+              onClick={() => manejarExportar('excel')}
+              disabled={botonesDeshabilitados}
+              className="rounded-lg bg-[#2D7C5E] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-[#236349] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {exportando === 'excel' ? 'Generando Excel...' : 'Exportar a Excel'}
+            </button>
+          )}
         </div>
       </section>
 

@@ -51,14 +51,17 @@ export async function exportSelectedToPDF(
   const pageHeight = pdf.internal.pageSize.getHeight();
   const anchoUtil = pageWidth - MARGEN_MM * 2;
 
-  // Encabezado del reporte.
+  // Encabezado del reporte. Los filtros pueden incluir varias carreras y dos
+  // dimensiones temporales, por lo que se dividen en líneas para no salir del A4.
   pdf.setFontSize(16);
   pdf.text(`Reporte: ${title}`, MARGEN_MM, 15);
   pdf.setFontSize(10);
-  pdf.text(`Filtros activos: ${filters}`, MARGEN_MM, 22);
-  pdf.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, MARGEN_MM, 28);
+  const lineasFiltros = pdf.splitTextToSize(`Filtros activos: ${filters}`, anchoUtil);
+  pdf.text(lineasFiltros, MARGEN_MM, 22);
+  const yFecha = 22 + lineasFiltros.length * 5;
+  pdf.text(`Fecha: ${new Date().toLocaleDateString('es-CL')}`, MARGEN_MM, yFecha);
 
-  let y = 38;
+  let y = yFecha + 10;
 
   for (const modulo of modules) {
     const ids = [modulo.id, ...(modulo.extraIds ?? [])];
