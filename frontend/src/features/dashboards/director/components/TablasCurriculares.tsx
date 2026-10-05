@@ -9,6 +9,9 @@ interface TablaIndicadoresProps {
   cabeceraIndicador: string;
   indicadores: Indicador[];
   filas: FilaPeriodo[];
+  // Cuando la tarjeta contenedora (DataCardView) ya muestra título y descripción,
+  // la tabla no repite su propia cabecera.
+  mostrarCabecera?: boolean;
 }
 
 interface TablaAvanceProps {
@@ -16,6 +19,7 @@ interface TablaAvanceProps {
   descripcion: string;
   columnas: Indicador[];
   filas: FilaPeriodo[];
+  mostrarCabecera?: boolean;
 }
 
 interface TablaCriticasProps {
@@ -45,15 +49,18 @@ export function TablaIndicadores({
   cabeceraIndicador,
   indicadores,
   filas,
+  mostrarCabecera = true,
 }: TablaIndicadoresProps) {
   const anios = obtenerAnios(filas.map((fila) => fila.periodo));
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="font-bold text-slate-800 text-lg">{titulo}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
-      </div>
+      {mostrarCabecera && (
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h3 className="font-bold text-slate-800 text-lg">{titulo}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
+        </div>
+      )}
 
       {anios.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{SIN_DATOS}</div>
@@ -100,15 +107,23 @@ export function TablaIndicadores({
 }
 
 // Cohortes por fila y categorías porcentuales de avance por columna.
-export function TablaAvance({ titulo, descripcion, columnas, filas }: TablaAvanceProps) {
+export function TablaAvance({
+  titulo,
+  descripcion,
+  columnas,
+  filas,
+  mostrarCabecera = true,
+}: TablaAvanceProps) {
   const anios = obtenerAnios(filas.map((fila) => fila.periodo));
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="font-bold text-slate-800 text-lg">{titulo}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
-      </div>
+      {mostrarCabecera && (
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h3 className="font-bold text-slate-800 text-lg">{titulo}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
+        </div>
+      )}
 
       {anios.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{SIN_DATOS}</div>

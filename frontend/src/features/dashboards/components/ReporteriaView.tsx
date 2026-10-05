@@ -15,6 +15,9 @@ export const EVENTO_DESCARGA = 'download-registered';
 export interface ModuloReporteria extends ExportModule {
   categoria: string;
   render: () => ReactNode;
+  // Distintivo visual en el selector: separa el bloque gráfico (solo PDF)
+  // del tabular (PDF + Excel) sin recargar el nombre del módulo.
+  tipoVista?: 'Gráfico' | 'Tabla' | 'Mixto';
 }
 
 interface ReporteriaViewProps {
@@ -167,15 +170,28 @@ const botonesDeshabilitados = exportando !== null || seleccionados.length === 0;
                     .map((modulo) => (
                       <label
                         key={modulo.id}
-                        className="-ml-2 flex cursor-pointer items-start gap-3 rounded p-2 transition-colors hover:bg-slate-50"
+                        className="-ml-2 flex cursor-pointer items-center justify-between gap-3 rounded p-2 transition-colors hover:bg-slate-50"
                       >
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={seleccionados.includes(modulo.id)}
-                          onChange={() => alternar(modulo.id)}
-                        />
-                        <span className="font-medium text-slate-700">{modulo.label}</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={seleccionados.includes(modulo.id)}
+                            onChange={() => alternar(modulo.id)}
+                          />
+                          <span className="font-medium text-slate-700">{modulo.label}</span>
+                        </div>
+                        {/* BADGE UX: identifica de un vistazo el tipo de vista */}
+                        {modulo.tipoVista && (
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                              modulo.tipoVista === 'Gráfico'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {modulo.tipoVista}
+                          </span>
+                        )}
                       </label>
                     ))}
                 </div>

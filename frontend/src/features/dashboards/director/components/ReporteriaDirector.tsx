@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ApiError, apiRequest } from '../../../auth/api';
 import { useAuth } from '../../../auth/AuthContext';
 import { ReporteriaView, type ModuloReporteria } from '../../components/ReporteriaView';
+import { AvanceCicloFormativo } from './AvanceCicloFormativo';
+import { EficienciaCurricular } from './EficienciaCurricular';
 import { EvolucionRetencion } from './EvolucionRetencion';
 import { TablaPeriodos } from './ProgresionAnalitica';
 import {
@@ -100,6 +102,26 @@ function crearModulo(
     data,
     formats: ['pdf', 'excel'],
     render,
+    tipoVista: 'Tabla',
+  };
+}
+
+// Los gráficos se exportan solo a PDF: html2canvas los captura como imagen y no
+// aportan filas al Excel (la data tabular vive en su módulo de tabla asociado).
+function crearModuloGrafico(
+  id: string,
+  label: string,
+  render: () => React.ReactNode,
+  categoria: string = CATEGORIA_ANALITICA,
+): ModuloReporteria {
+  return {
+    categoria,
+    id,
+    label,
+    data: [],
+    formats: ['pdf'],
+    render,
+    tipoVista: 'Gráfico',
   };
 }
 
@@ -199,13 +221,6 @@ export function ReporteriaDirector() {
     },
   }));
 
-  const datosEvolucion: FilaExportable[] = progresionData.map((fila) => ({
-    Cohorte: fila.cohorte,
-    'Retención 1er Año (%)': fila.retencion_a1,
-    'Retención 2do Año (%)': fila.retencion_a2,
-    'Retención 3er Año (%)': fila.retencion_a3,
-  }));
-
   const datosRetencion: FilaExportable[] = progresionData.map((fila) => ({
     Cohorte: fila.cohorte,
     'Retención 1er año': fila.retencion_a1,
@@ -293,12 +308,26 @@ export function ReporteriaDirector() {
     'Tasa de reprobación (%)': fila.tasa_reprobacion,
   }));
 
+  // PARES GRÁFICO/TABLA JUNTOS: el gráfico (solo PDF) precede a su tabla
+  // (PDF + Excel) para que en el selector queden agrupados por indicador.
   const modulos: ModuloReporteria[] = [
-    crearModulo(
-      'reporteria-evolucion',
+    crearModuloGrafico(
+      'chart-evolucion-retencion',
       'Evolución longitudinal de retención',
-      datosEvolucion,
       () => <EvolucionRetencion isExportMode />,
+    ),
+    crearModulo(
+      'table-evolucion-retencion',
+      'Tasas de retención por cohorte',
+      datosRetencion,
+      () => (
+        <TablaPeriodos
+          titulo="Cohortes / Tasas de retención"
+          descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
+          indicadores={INDICADORES_RETENCION}
+          filas={filasProgresion}
+        />
+      ),
     ),
     crearModulo(
       'reporteria-ingresos',
@@ -327,19 +356,6 @@ export function ReporteriaDirector() {
       ),
     ),
     crearModulo(
-      'reporteria-retencion',
-      'Cohortes / Tasas de retención',
-      datosRetencion,
-      () => (
-          <TablaPeriodos
-            titulo="Cohortes / Tasas de retención"
-            descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
-            indicadores={INDICADORES_RETENCION}
-            filas={filasProgresion}
-          />
-      ),
-    ),
-    crearModulo(
       'reporteria-titulacion',
       'Titulación y tiempo de egreso',
       datosTitulacion,
@@ -352,9 +368,15 @@ export function ReporteriaDirector() {
           />
       ),
     ),
+    crearModuloGrafico(
+      'chart-eficiencia-curricular',
+      'Tasa de eficiencia curricular',
+      () => <EficienciaCurricular data={eficiencia} isExportMode />,
+      CATEGORIA_CURRICULAR,
+    ),
     crearModulo(
-      'reporteria-eficiencia',
-      'Tasa de eficiencia curricular por cohorte',
+      'table-eficiencia-curricular',
+      'Distribución de eficiencia curricular',
       datosEficiencia,
       () => (
         <TablaIndicadores
@@ -367,9 +389,15 @@ export function ReporteriaDirector() {
       ),
       CATEGORIA_CURRICULAR,
     ),
-    crearModulo(
-      'reporteria-avance',
+    crearModuloGrafico(
+      'chart-avance-ciclo',
       'Estado de avance por ciclo formativo',
+      () => <AvanceCicloFormativo data={avance} isExportMode />,
+      CATEGORIA_CURRICULAR,
+    ),
+    crearModulo(
+      'table-avance-ciclo',
+      'Distribución de avance por ciclo formativo',
       datosAvance,
       () => (
         <TablaAvance
@@ -382,7 +410,7 @@ export function ReporteriaDirector() {
       CATEGORIA_CURRICULAR,
     ),
     crearModulo(
-      'reporteria-criticas',
+      'table-criticas',
       'Asignaturas críticas',
       datosCriticas,
       () => (

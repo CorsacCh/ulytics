@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest } from '../../../auth/api';
 import { useAuth } from '../../../auth/AuthContext';
+import { DataCardView } from '../../components/DataCardView';
 import { EvolucionRetencion } from './EvolucionRetencion';
 import {
   INDICADORES_INGRESOS,
@@ -16,6 +17,9 @@ export interface TablaPeriodosProps {
   descripcion: string;
   indicadores: Indicador[];
   filas: FilaPeriodo[];
+  // Cuando la tarjeta contenedora (DataCardView) ya muestra título y descripción,
+  // la tabla no repite su propia cabecera.
+  mostrarCabecera?: boolean;
 }
 
 // Respuesta de GET /api/reporteria/:car_codigo/matricula
@@ -78,15 +82,23 @@ const formateadorPorcentaje = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 });
 
-export function TablaPeriodos({ titulo, descripcion, indicadores, filas }: TablaPeriodosProps) {
+export function TablaPeriodos({
+  titulo,
+  descripcion,
+  indicadores,
+  filas,
+  mostrarCabecera = true,
+}: TablaPeriodosProps) {
   const periodos = obtenerPeriodos(filas);
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="font-bold text-slate-800 text-lg">{titulo}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
-      </div>
+      {mostrarCabecera && (
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h3 className="font-bold text-slate-800 text-lg">{titulo}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
+        </div>
+      )}
 
       {periodos.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">
@@ -257,13 +269,17 @@ export function ProgresionAnalitica() {
 
       {loading && (
         <div
-          className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200/80 bg-white shadow-sm"
+          className="flex flex-col gap-6 animate-pulse p-2"
           role="status"
           aria-live="polite"
         >
-          <span className="text-sm font-medium text-slate-500 animate-pulse">
-            Cargando indicadores históricos...
-          </span>
+          <div className="h-7 bg-gray-200 rounded w-1/3" />
+          <div className="h-64 bg-gray-200 rounded-lg" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-48 bg-gray-200 rounded-lg" />
+            <div className="h-48 bg-gray-200 rounded-lg" />
+          </div>
+          <div className="h-48 bg-gray-200 rounded-lg" />
         </div>
       )}
 
@@ -275,10 +291,23 @@ export function ProgresionAnalitica() {
 
       {!loading && !error && (
         <div className="space-y-10">
-          {/* GRÁFICO: Evolución longitudinal de retención por cohorte */}
-          <section id="progresion-analitica-evolucion" className="grid grid-cols-1 gap-6">
-            <EvolucionRetencion />
-          </section>
+          {/* TOGGLE GRÁFICO/TABLA: Evolución longitudinal de retención por cohorte */}
+          <div id="progresion-analitica-evolucion">
+            <DataCardView
+              title="Evolución Longitudinal de Retención"
+              description="Porcentaje de retención por cohorte a lo largo de los años."
+              chartComponent={<EvolucionRetencion mostrarCabecera={false} />}
+              tableComponent={
+                <TablaPeriodos
+                  titulo="Cohortes / Tasas de retención"
+                  descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
+                  indicadores={INDICADORES_RETENCION}
+                  filas={filasProgresion}
+                  mostrarCabecera={false}
+                />
+              }
+            />
+          </div>
 
           {/* TABLAS: ingresos por cohorte y matrícula por año de medición */}
           <div id="progresion-analitica-matricula">
@@ -296,16 +325,6 @@ export function ProgresionAnalitica() {
               descripcion="Matrícula total y participación de mujeres para cada año de medición."
               indicadores={INDICADORES_MATRICULA}
               filas={filasMatricula}
-            />
-          </div>
-
-          {/* TABLA: Cohortes / Tasas de retención */}
-          <div id="progresion-analitica-retencion">
-            <TablaPeriodos
-              titulo="Cohortes / Tasas de retención"
-              descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
-              indicadores={INDICADORES_RETENCION}
-              filas={filasProgresion}
             />
           </div>
 
