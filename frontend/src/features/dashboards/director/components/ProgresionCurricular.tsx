@@ -11,6 +11,9 @@ import {
   type FilaEficiencia,
 } from '../data/curricular';
 import type { FilaPeriodo } from '../data/indicadoresProgresion';
+import { DataCardView } from '../../components/DataCardView';
+import { AvanceCicloFormativo } from './AvanceCicloFormativo';
+import { EficienciaCurricular } from './EficienciaCurricular';
 import {
   TablaAvance,
   TablaAsignaturasCriticas,
@@ -143,13 +146,14 @@ export function ProgresionCurricular() {
 
       {loading && (
         <div
-          className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200/80 bg-white shadow-sm"
+          className="flex flex-col gap-6 animate-pulse p-2"
           role="status"
           aria-live="polite"
         >
-          <span className="text-sm font-medium text-slate-500 animate-pulse">
-            Cargando indicadores curriculares...
-          </span>
+          <div className="h-7 bg-gray-200 rounded w-1/3" />
+          <div className="h-64 bg-gray-200 rounded-lg" />
+          <div className="h-64 bg-gray-200 rounded-lg" />
+          <div className="h-48 bg-gray-200 rounded-lg" />
         </div>
       )}
 
@@ -161,24 +165,40 @@ export function ProgresionCurricular() {
 
       {!loading && !error && (
         <div className="space-y-10">
-          {/* TABLA 1: Tasa de eficiencia curricular por cohorte */}
+          {/* TOGGLE GRÁFICO/TABLA: Tasa de eficiencia curricular por cohorte */}
           <div id="progresion-curricular-eficiencia">
-            <TablaIndicadores
-              titulo="Tasa de eficiencia curricular por cohorte"
-              descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
-              cabeceraIndicador="Indicador / Cohorte"
-              indicadores={INDICADORES_EFICIENCIA}
-              filas={filasEficiencia}
+            <DataCardView
+              title="Tasa de eficiencia curricular por cohorte"
+              description="Distribución de estudiantes de cada cohorte según su tramo de eficiencia."
+              chartComponent={<EficienciaCurricular data={eficiencia} mostrarCabecera={false} />}
+              tableComponent={
+                <TablaIndicadores
+                  titulo="Tasa de eficiencia curricular por cohorte"
+                  descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
+                  cabeceraIndicador="Indicador / Cohorte"
+                  indicadores={INDICADORES_EFICIENCIA}
+                  filas={filasEficiencia}
+                  mostrarCabecera={false}
+                />
+              }
             />
           </div>
 
-          {/* TABLA 2: Estado de avance por ciclo formativo */}
+          {/* TOGGLE GRÁFICO/TABLA: Estado de avance por ciclo formativo */}
           <div id="progresion-curricular-avance">
-            <TablaAvance
-              titulo="Estado de avance por ciclo formativo"
-              descripcion="Porcentaje de alumnos regulares de cada cohorte en las cinco categorías de avance curricular."
-              columnas={COLUMNAS_AVANCE}
-              filas={filasAvance}
+            <DataCardView
+              title="Estado de avance por ciclo formativo"
+              description="Porcentaje de alumnos regulares y su cumplimiento esperado por ciclo."
+              chartComponent={<AvanceCicloFormativo data={avance} mostrarCabecera={false} />}
+              tableComponent={
+                <TablaAvance
+                  titulo="Estado de avance por ciclo formativo"
+                  descripcion="Porcentaje de alumnos regulares de cada cohorte en las cinco categorías de avance curricular."
+                  columnas={COLUMNAS_AVANCE}
+                  filas={filasAvance}
+                  mostrarCabecera={false}
+                />
+              }
             />
           </div>
 

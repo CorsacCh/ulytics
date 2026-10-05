@@ -33,9 +33,15 @@ interface Props {
   // Reportería, para ser fotografiado por html2canvas. En ese caso se apaga
   // la animación: no hay nadie mirándola y retrasa la captura.
   isExportMode?: boolean;
+  // Cuando la tarjeta contenedora (DataCardView) ya muestra título y descripción,
+  // el gráfico no repite su propia cabecera.
+  mostrarCabecera?: boolean;
 }
 
-export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
+export function EvolucionRetencion({
+  isExportMode = false,
+  mostrarCabecera = true,
+}: Props = {}) {
   const { user } = useAuth();
 
   // El director solo puede ver la carrera de su ámbito (tipo PROGRAMA),
@@ -75,6 +81,8 @@ export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
             retencion1erAno: fila.retencion_a1,
             retencion2doAno: fila.retencion_a2,
             retencion3erAno: fila.retencion_a3,
+            retencion4toAno: fila.retencion_a4,
+            retencionTotal: fila.retencion_total,
           }))
         );
         setCarrera(respuesta.carrera ?? '');
@@ -100,19 +108,24 @@ export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
-      <div className="mb-4">
-        <h3 className="font-bold text-slate-800 text-lg">Evolución Longitudinal de Retención</h3>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Porcentaje de retención por cohorte a lo largo de los años
-          {carrera ? ` · ${carrera}` : ''}
-        </p>
-      </div>
+      {mostrarCabecera && (
+        <div className="mb-4">
+          <h3 className="font-bold text-slate-800 text-lg">Evolución Longitudinal de Retención</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Porcentaje de retención por cohorte a lo largo de los años
+            {carrera ? ` · ${carrera}` : ''}
+          </p>
+        </div>
+      )}
 
       {loading && (
-        <div className="flex min-h-[300px] flex-1 items-center justify-center" role="status" aria-live="polite">
-          <span className="text-sm font-medium text-slate-500 animate-pulse">
-            Cargando datos históricos...
-          </span>
+        <div
+          className="flex min-h-[300px] flex-1 flex-col gap-4 animate-pulse"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="h-4 bg-gray-200 rounded w-1/3" />
+          <div className="flex-1 bg-gray-200 rounded-lg" />
         </div>
       )}
 
@@ -131,9 +144,9 @@ export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
       )}
 
       {!loading && !error && data.length > 0 && (
-        // En exportación el alto es fijo: el ResponsiveContainer mide su
-        // contenedor padre y, si sólo depende de flex, colapsaría a 0 px.
-        <div style={{ height: isExportMode ? 400 : undefined }} className="min-h-[300px] flex-1">
+        // Alto fijo en todas las vistas: el ResponsiveContainer mide su contenedor
+        // padre y, si solo depende de flex, colapsaría a 0 px durante el fade-in.
+        <div style={{ height: 400 }} className="min-h-[400px]">
           <ResponsiveContainer width="100%" height={isExportMode ? 400 : '100%'}>
             <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -152,16 +165,17 @@ export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
               />
               <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                formatter={(value) => [`${value}%`, 'Retención']}
+                formatter={(value, name) => [`${value}%`, name]}
               />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
+              {/* Líneas anuales (continuas) */}
               <Line
                 type="monotone"
                 name="1er Año"
                 dataKey="retencion1erAno"
                 stroke="#2563EB" /* blue-600 */
-                strokeWidth={3}
+                strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
                 connectNulls
@@ -172,7 +186,7 @@ export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
                 name="2do Año"
                 dataKey="retencion2doAno"
                 stroke="#10B981" /* emerald-500 */
-                strokeWidth={3}
+                strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}
                 connectNulls
@@ -183,6 +197,32 @@ export function EvolucionRetencion({ isExportMode = false }: Props = {}) {
                 name="3er Año"
                 dataKey="retencion3erAno"
                 stroke="#8B5CF6" /* violet-500 */
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+                connectNulls
+                isAnimationActive={!isExportMode}
+              />
+              <Line
+                type="monotone"
+                name="4to Año"
+                dataKey="retencion4toAno"
+                stroke="#F43F5E" /* rose-500: contraste con la paleta anual */
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+                connectNulls
+                isAnimationActive={!isExportMode}
+              />
+
+              {/* Métrica de resultado final (punteada, neutra y más gruesa:
+                  denota cierre, no un paso intermedio del ciclo) */}
+              <Line
+                type="monotone"
+                name="Retención total"
+                dataKey="retencionTotal"
+                stroke="#475569" /* slate-600 */
+                strokeDasharray="5 5"
                 strokeWidth={3}
                 dot={{ r: 4 }}
                 activeDot={{ r: 8 }}

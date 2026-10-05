@@ -4,12 +4,15 @@ import morgan from "morgan";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger.js";
 import authRoutes from "./routes/auth.routes.js";
 import adminUserRoutes from "./routes/admin-users.routes.js";
 import cargaRoutes from './routes/carga.routes.js';
 import reporteriaRoutes from './routes/reporteria.routes.js';
 import ambitoRoutes from './routes/ambito.routes.js';
 import decanaturaRoutes from './routes/decanatura.routes.js';
+import directorHomeRoutes from './routes/director-home.routes.js';
 import descargasRoutes from './routes/descargas.routes.js';
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js";
 
@@ -45,6 +48,30 @@ app.use(
   })
 );
 
+app.use("/api-docs", (_request, response, next) => {
+  response.removeHeader("Content-Security-Policy");
+  next();
+});
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Comprueba el estado de la API
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: La API está disponible
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ */
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
 });
@@ -55,6 +82,7 @@ app.use("/api/cargas", cargaRoutes);
 app.use('/api/reporteria', reporteriaRoutes);
 app.use('/api/ambitos', ambitoRoutes);
 app.use('/api/decanatura', decanaturaRoutes);
+app.use('/api/director', directorHomeRoutes);
 app.use('/api/descargas', descargasRoutes);
 
 app.use(notFoundHandler);

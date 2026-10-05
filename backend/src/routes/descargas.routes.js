@@ -17,6 +17,53 @@ router.use(
 );
 
 // Ruta: GET /api/descargas (historial + KPIs)
+/**
+ * @swagger
+ * /descargas:
+ *   get:
+ *     summary: Consulta el historial de descargas y sus indicadores
+ *     tags: [Descargas]
+ *     responses:
+ *       200:
+ *         description: Resumen de descargas recientes y registros históricos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 resumen:
+ *                   type: object
+ *                   properties:
+ *                     totalUltimos90Dias:
+ *                       type: integer
+ *                     ultimaDescargaFecha:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     ultimaDescargaNombre:
+ *                       type: string
+ *                       nullable: true
+ *                     formatosCantidad:
+ *                       type: integer
+ *                     formatosUsados:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                 registros:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id_descarga: { type: integer }
+ *                       nombre_archivo: { type: string }
+ *                       formato: { type: string }
+ *                       periodo: { type: string }
+ *                       fecha_descarga: { type: string, format: date-time }
+ *                       tamano_kb: { type: integer }
+ *                       url_archivo: { type: string }
+ *       401:
+ *         description: No autenticado o sesión no válida
+ */
 router.get('/', getHistorialDescargas);
 
 // Ruta: POST /api/descargas (registra una descarga generada en el cliente)
