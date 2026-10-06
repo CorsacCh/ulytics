@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Building2, BarChart3, AlertCircle /* y los que ya tenías */ } from 'lucide-react';
 
@@ -9,8 +9,9 @@ import DashboardHeader from '../../../shared/components/dashboard/DashboardHeade
 import { ProgresionAnaliticaAutoridad } from './components/ProgresionAnaliticaAutoridad';
 import { ProgresionCurricularAutoridad } from './components/ProgresionCurricularAutoridad';
 import { ReporteriaAutoridad } from './components/ReporteriaAutoridad';
+import { obtenerResumenInstitucional } from './api';
 
-import { autoridadHomeData } from './data/homeData';
+import { autoridadHomeData as fallbackData } from './data/homeData';
 import type { AutoridadHomeData } from './data/homeData';
 
 const ALERTA_ESTILOS: Record<AutoridadHomeData['alertas'][number]['tipo'], { badge: string; icono: string }> = {
@@ -19,28 +20,44 @@ const ALERTA_ESTILOS: Record<AutoridadHomeData['alertas'][number]['tipo'], { bad
   informativa: { badge: 'bg-blue-100 text-blue-600', icono: 'i' },
 };
 
-function CareerRow({ career }: { career: any }) {
-  return (
-    <tr className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
-      <td className="py-3 px-4 font-semibold text-[#1E293B]">{career.name}</td>
-      <td className="py-3 px-4 text-[#878787]">{career.enrollment}</td>
-      <td className="py-3 px-4">
-        <span className="inline-flex items-center gap-1 font-semibold text-[#22C55E]">
-          {career.retention}%
-        </span>
-      </td>
-      <td className="py-3 px-4">
-        <span className={`inline-flex items-center gap-1 font-semibold ${career.graduation >= 80 ? 'text-[#22C55E]' : 'text-[#FFB800]'}`}>
-          {career.graduation}%
-        </span>
-      </td>
-    </tr>
-  );
-}
+// Paleta corporativa monocromática para el donut de distribución por facultad.
+const COLORES_FACULTAD = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
 
 export default function DashboardAutoridad() {
   const [section, setSection] = useState<Section>('Home');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [data, setData] = useState<AutoridadHomeData | null>(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const fetchDatosInstitucionales = async () => {
+      try {
+        setCargando(true);
+        // Llamada real al backend: GET /api/autoridad/resumen
+        const dataReal = await obtenerResumenInstitucional();
+        setData(dataReal);
+      } catch (error) {
+        console.error('Error al cargar los datos institucionales:', error);
+        setData(fallbackData); // Mantenemos el fallback en caso de error de red
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    fetchDatosInstitucionales();
+  }, []);
+
+  // Renderizado del estado de carga
+  if (cargando || !data) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-10">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+          <p className="text-sm font-medium text-slate-500">Cargando reporte institucional...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (section) {
@@ -52,7 +69,7 @@ export default function DashboardAutoridad() {
         return <ReporteriaAutoridad />;
       case 'Home':
       default: {
-        const { kpis, alertas, graficos } = autoridadHomeData;
+        const { kpis, alertas, graficos } = data;
         return (
           <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
             <DashboardHeader title="Reporte Institucional" subtitle="NIVEL CENTRAL · AUTORIDAD" />
@@ -104,7 +121,7 @@ export default function DashboardAutoridad() {
                 <p className="text-3xl font-bold text-gray-800">
                   {kpis.tasa_titulacion_total !== null ? `${kpis.tasa_titulacion_total}%` : 'N/A'}
                 </p>
-                <p className="text-sm mt-2 text-gray-400">Meta institucional</p>
+                <p className="text-sm mt-2 text-gray-500">Meta institucional · Cohorte {kpis.cohorte_titulacion || 'Histórica'}</p>
               </div>
 
               <div className="bg-white border rounded-lg shadow-sm p-6">
@@ -132,7 +149,7 @@ export default function DashboardAutoridad() {
                   <LineChart data={graficos.evolucionMatricula}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="year" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={['dataMin - 500', 'dataMax + 500']} tickFormatter={(value) => value.toLocaleString('es-CL')} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                     <Line type="monotone" dataKey="total" stroke="#FFB800" strokeWidth={3} dot={{ fill: '#FFB800', r: 4 }} activeDot={{ r: 6 }} />
                   </LineChart>
@@ -150,9 +167,9 @@ export default function DashboardAutoridad() {
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
-                    <Pie data={graficos.distribucionFacultad} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${value}%`} outerRadius={100} dataKey="value">
-                      {graficos.distribucionFacultad.map((entry) => (
-                        <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                    <Pie data={graficos.distribucionFacultad} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${value}%`} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
+                      {graficos.distribucionFacultad.map((entry, index) => (
+                        <Cell key={`cell-${entry.name}`} fill={COLORES_FACULTAD[index % COLORES_FACULTAD.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -173,18 +190,19 @@ export default function DashboardAutoridad() {
                   <BarChart3 className="size-5 text-[#FFB800]" />
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50">
-                        <th className="py-3 px-4 font-semibold uppercase text-xs tracking-widest text-slate-500 rounded-tl-lg">Carrera</th>
-                        <th className="py-3 px-4 font-semibold uppercase text-xs tracking-widest text-slate-500">Matrícula</th>
-                        <th className="py-3 px-4 font-semibold uppercase text-xs tracking-widest text-slate-500">Retención</th>
-                        <th className="py-3 px-4 font-semibold uppercase text-xs tracking-widest text-slate-500 rounded-tr-lg">Titulación</th>
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50/50 text-xs font-bold uppercase tracking-wider text-gray-500">
+                      <tr>
+                        <th className="px-4 py-3 rounded-tl-lg">Carrera</th>
+                        <th className="px-4 py-3 text-right rounded-tr-lg">Matrícula</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {graficos.topCarreras.map((career) => (
-                        <CareerRow key={career.name} career={career} />
+                    <tbody className="divide-y divide-gray-100">
+                      {graficos.topCarreras.map((entry, index) => (
+                        <tr key={`top-${index}`} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-gray-900">{entry.name}</td>
+                          <td className="px-4 py-3 text-right text-gray-600 font-semibold">{entry.enrollment}</td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -207,7 +225,15 @@ export default function DashboardAutoridad() {
                       <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <YAxis dataKey="faculty" type="category" width={100} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value) => `${value}%`} />
-                      <Bar dataKey="rate" fill="#FFB800" radius={[0, 4, 4, 0]} barSize={20} />
+                      <Bar dataKey="rate" radius={[0, 4, 4, 0]} barSize={20}>
+                        {graficos.retencionPorFacultad.map((entry) => (
+                          <Cell
+                            key={`cell-${entry.faculty}`}
+                            // Umbral 80 % (igual que el backend): rojo por debajo, azul en adelante.
+                            fill={entry.rate < 80 ? '#ef4444' : '#3b82f6'}
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </article>

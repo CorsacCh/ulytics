@@ -2,9 +2,12 @@ import { Carrera, Macrounidad } from '../persistence/models/index.js';
 
 export const getAmbitos = async (req, res) => {
   try {
-    // Obtenemos todas las carreras ordenadas alfabéticamente
+    // Obtenemos todas las carreras ordenadas alfabéticamente.
+    // Se incluye id_macrounidad para vincular cada carrera con su facultad
+    // en los selectores jerárquicos de la Autoridad (campo aditivo: no rompe
+    // a los consumidores que solo usan car_codigo y nombre).
     const carreras = await Carrera.findAll({
-      attributes: ['car_codigo', 'nombre'],
+      attributes: ['car_codigo', 'nombre', 'id_macrounidad'],
       order: [['nombre', 'ASC']]
     });
 

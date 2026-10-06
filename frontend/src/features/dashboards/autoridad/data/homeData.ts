@@ -8,6 +8,7 @@ export interface AutoridadHomeData {
     retencion_institucional: number | null;
     crecimiento_retencion: number | null;
     tasa_titulacion_total: number | null;
+    cohorte_titulacion: number | null;
     carreras_monitoreadas: number;
   };
   alertas: {
@@ -30,6 +31,7 @@ export const autoridadHomeData: AutoridadHomeData = {
     retencion_institucional: 86,
     crecimiento_retencion: 1.2,
     tasa_titulacion_total: 78,
+    cohorte_titulacion: null,
     carreras_monitoreadas: 24,
   },
   alertas: [

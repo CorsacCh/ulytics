@@ -14,6 +14,7 @@ import ambitoRoutes from './routes/ambito.routes.js';
 import decanaturaRoutes from './routes/decanatura.routes.js';
 import directorHomeRoutes from './routes/director-home.routes.js';
 import descargasRoutes from './routes/descargas.routes.js';
+import autoridadRoutes from './routes/autoridad.routes.js';
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -84,6 +85,7 @@ app.use('/api/ambitos', ambitoRoutes);
 app.use('/api/decanatura', decanaturaRoutes);
 app.use('/api/director', directorHomeRoutes);
 app.use('/api/descargas', descargasRoutes);
+app.use('/api/autoridad', autoridadRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

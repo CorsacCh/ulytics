@@ -1,33 +1,85 @@
 import { useEffect, useState } from 'react';
-import { FileText, ChevronDown, Download, Landmark } from 'lucide-react';
-import { facultadesOptions, carrerasOptions, aplicarCodigosCarreras } from '../data/institucionData';
-import { obtenerCatalogoCarreras, type CatalogoCarrera } from '../api';
+import { Landmark } from 'lucide-react';
+import { facultadesOptions, carrerasOptions, type OpcionCarrera, type OpcionFacultad } from '../data/institucionData';
+import { obtenerCatalogoInstitucional } from '../api';
 import { AutoridadSelectors } from './AutoridadSelectors';
 import { DataCardView } from '../../components/DataCardView';
+import {
+  obtenerMatriculaCarrera,
+  obtenerProgresionCarrera,
+  type FilaIngreso,
+  type FilaMatricula,
+  type FilaProgresion,
+} from '../../decano/api';
+import { EvolucionRetencion } from '../../director/components/EvolucionRetencion';
+import { TablaPeriodos } from '../../director/components/ProgresionAnalitica';
+import {
+  INDICADORES_INGRESOS,
+  INDICADORES_MATRICULA,
+  INDICADORES_RETENCION,
+  INDICADORES_TITULACION,
+  type FilaPeriodo,
+} from '../../director/data/indicadoresProgresion';
+import type { CohorteRetencion } from '../../director/data/retentionData';
 
 export function ProgresionAnaliticaAutoridad() {
   const [selectedFacultad, setSelectedFacultad] = useState<string | null>(null);
   const [selectedCarrera, setSelectedCarrera] = useState<string | null>(null);
 
-  // Códigos oficiales desde el catálogo institucional; sin conexión los
-  // selectores siguen funcionando y muestran solo el nombre de la carrera.
-  const [catalogoCarreras, setCatalogoCarreras] = useState<CatalogoCarrera[]>([]);
+  // Catálogo real del backend (GET /api/ambitos). Mientras carga o si la API
+  // falla, los selectores degradan a los mocks estáticos de institucionData.
+  const [facultadesReales, setFacultadesReales] = useState<OpcionFacultad[]>([]);
+  const [carrerasReales, setCarrerasReales] = useState<OpcionCarrera[]>([]);
 
   useEffect(() => {
     let activo = true;
-    obtenerCatalogoCarreras()
-      .then((carreras) => {
-        if (activo) setCatalogoCarreras(carreras);
+    obtenerCatalogoInstitucional()
+      .then((catalogo) => {
+        if (!activo) return;
+        const tieneFacultades = catalogo.facultades.length > 0;
+        // Sin id_macrounidad no se puede filtrar por facultad: se conserva el
+        // fallback estático en lugar de mostrar un selector vacío.
+        const tieneVinculo = catalogo.carreras.length > 0
+          && catalogo.carreras.every((carrera) => Boolean(carrera.id_macrounidad));
+        if (tieneFacultades) {
+          setFacultadesReales(
+            catalogo.facultades.map((facultad) => ({
+              id: facultad.id_macrounidad,
+              nombre: facultad.nombre,
+            })),
+          );
+        }
+        if (tieneVinculo) {
+          setCarrerasReales(
+            catalogo.carreras.map((carrera) => ({
+              // El código oficial es el identificador: es único y es lo que
+              // consume el drill-down del Director.
+              id: carrera.car_codigo,
+              nombre: carrera.nombre,
+              facultadId: carrera.id_macrounidad ?? '',
+              car_codigo: carrera.car_codigo,
+            })),
+          );
+        }
+        if (tieneFacultades || tieneVinculo) {
+          // Los IDs reales (id_macrounidad/car_codigo) no coinciden con los
+          // estáticos: se limpia la selección para evitar IDs huérfanos.
+          setSelectedFacultad(null);
+          setSelectedCarrera(null);
+        }
       })
-      .catch(() => {
-        // Sin catálogo disponible la UI degrada sin códigos, nunca se rompe.
+      .catch((error) => {
+        console.error('Error al cargar el catálogo:', error);
+        // Sin catálogo disponible la UI degrada a los mocks, nunca se rompe.
       });
     return () => {
       activo = false;
     };
   }, []);
 
-  const carrerasConCodigo = aplicarCodigosCarreras(carrerasOptions, catalogoCarreras);
+  // Opciones efectivas: reales cuando llegaron, estáticas como fallback.
+  const facultadesEfectivas = facultadesReales.length > 0 ? facultadesReales : facultadesOptions;
+  const carrerasEfectivas = carrerasReales.length > 0 ? carrerasReales : carrerasOptions;
 
   // La carrera se resetea al cambiar la facultad hasta que el usuario elija
   // una carrera de la lista filtrada.
@@ -38,13 +90,120 @@ export function ProgresionAnaliticaAutoridad() {
 
   const handleCarreraChange = (id: string) => setSelectedCarrera(id);
 
-  const facultadSeleccionada = facultadesOptions.find((f) => f.id === selectedFacultad)?.nombre ?? null;
-  const carreraSeleccionada = carrerasOptions.find((c) => c.id === selectedCarrera)?.nombre ?? null;
+  // Código oficial de la carrera elegida: habilita el drill-down con los
+  // mismos endpoints que consume el Dashboard del Director.
+  const carCodigo =
+    carrerasEfectivas.find((carrera) => carrera.id === selectedCarrera)?.car_codigo ?? null;
+
+  const [ingresos, setIngresos] = useState<FilaIngreso[]>([]);
+  const [matriculasAnuales, setMatriculasAnuales] = useState<FilaMatricula[]>([]);
+  const [progresion, setProgresion] = useState<FilaProgresion[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!carCodigo) {
+      setIngresos([]);
+      setMatriculasAnuales([]);
+      setProgresion([]);
+      setError(null);
+      setCargando(false);
+      return;
+    }
+
+    let activo = true;
+
+    const cargarDrillDown = async () => {
+      try {
+        setCargando(true);
+        setError(null);
+        // Mismas rutas que usa el Director: GET /api/reporteria/:car_codigo/...
+        const [matricula, progresionCarrera] = await Promise.all([
+          obtenerMatriculaCarrera(carCodigo),
+          obtenerProgresionCarrera(carCodigo),
+        ]);
+        if (!activo) return;
+        setIngresos(matricula.ingresos_cohorte ?? []);
+        setMatriculasAnuales(matricula.matricula_anual ?? []);
+        setProgresion(progresionCarrera.datos ?? []);
+      } catch (err) {
+        if (!activo) return;
+        setIngresos([]);
+        setMatriculasAnuales([]);
+        setProgresion([]);
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'No fue posible cargar los datos de la carrera seleccionada.'
+        );
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+
+    cargarDrillDown();
+
+    return () => {
+      activo = false;
+    };
+  }, [carCodigo]);
+
+  const facultadSeleccionada = facultadesEfectivas.find((f) => f.id === selectedFacultad)?.nombre ?? null;
+  const carreraSeleccionada = carrerasEfectivas.find((c) => c.id === selectedCarrera)?.nombre ?? null;
   const contextoSeleccion = facultadSeleccionada
     ? carreraSeleccionada
       ? `${facultadSeleccionada} · ${carreraSeleccionada}`
       : `${facultadSeleccionada} · Seleccione una carrera`
     : 'Seleccione una facultad y una carrera para filtrar';
+
+  // Mismo despivotado que aplica el Director antes de renderizar TablaPeriodos.
+  const filasIngreso: FilaPeriodo[] = ingresos.map((fila) => ({
+    periodo: fila.cohorte,
+    valores: {
+      ingresos_totales: fila.ingresos_totales,
+      ingresos_sua: fila.ingresos_sua,
+      ingresos_pace: fila.ingresos_pace,
+      ingresos_especiales: fila.ingresos_especiales,
+    },
+  }));
+
+  // La matrícula se organiza por año de medición y no por cohorte de ingreso.
+  const filasMatricula: FilaPeriodo[] = matriculasAnuales.map((fila) => ({
+    periodo: fila.anio_medicion,
+    valores: {
+      matricula_total: fila.matricula_total,
+      matricula_mujeres: fila.matricula_mujeres,
+      porcentaje_mujeres: fila.porcentaje_mujeres,
+    },
+  }));
+
+  const filasProgresion: FilaPeriodo[] = progresion.map((fila) => ({
+    periodo: fila.cohorte,
+    valores: {
+      retencion_a1: fila.retencion_a1,
+      retencion_a2: fila.retencion_a2,
+      retencion_a3: fila.retencion_a3,
+      retencion_a4: fila.retencion_a4,
+      retencion_total: fila.retencion_total,
+      tasa_titulacion_total: fila.tasa_titulacion_total,
+      tasa_titulacion_oportuna: fila.tasa_titulacion_oportuna,
+      tasa_titulacion_efectiva: fila.tasa_titulacion_efectiva,
+      duracion_real_semestres: fila.duracion_real_semestres,
+    },
+  }));
+
+  // El gráfico recibe la serie ya formateada: al recibir `datos` el componente
+  // no autoconsulta, evitando que use el ámbito de la sesión (INSTITUCION).
+  const evolucionRetencion: CohorteRetencion[] = progresion.map((fila) => ({
+    cohorte: String(fila.cohorte),
+    retencion1erAno: fila.retencion_a1,
+    retencion2doAno: fila.retencion_a2,
+    retencion3erAno: fila.retencion_a3,
+    retencion4toAno: fila.retencion_a4,
+    retencionTotal: fila.retencion_total,
+  }));
+
+  const sinSeleccion = !selectedCarrera;
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-10 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
@@ -60,21 +219,12 @@ export function ProgresionAnaliticaAutoridad() {
           <h2 className="text-2xl font-bold text-[#0A192F]">Progresión analítica</h2>
           
         </div>
-
-        <button
-          disabled
-          title="Próximamente"
-          className="flex w-fit items-center gap-2 rounded-lg bg-[#0A192F] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors opacity-50 cursor-not-allowed"
-        >
-          <FileText className="size-4" />
-          Exportar reporte a PDF
-        </button>
       </div>
 
       {/* SELECTORES JERÁRQUICOS EN CASCADA: FACULTAD -> CARRERA */}
       <AutoridadSelectors
-        facultades={facultadesOptions}
-        carreras={carrerasConCodigo}
+        facultades={facultadesEfectivas}
+        carreras={carrerasEfectivas}
         selectedFacultad={selectedFacultad}
         selectedCarrera={selectedCarrera}
         onFacultadChange={handleFacultadChange}
@@ -84,75 +234,81 @@ export function ProgresionAnaliticaAutoridad() {
       {/* CONTENEDOR DE DATOS DINÁMICOS */}
       <div className="space-y-6">
         
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-2">
-              {contextoSeleccion}
-            </p>
-            <h1 className="text-3xl font-bold text-[#0A192F]">Datos de Progresión Analítica</h1>
-            <p className="mt-1 text-sm text-slate-500 max-w-2xl">
-              Visualización institucional de matrícula, admisión y retención.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-              Cohorte: <span className="text-slate-900">2026</span> <ChevronDown className="size-4 text-slate-400" />
-            </button>
-            <button
-              disabled
-              title="Próximamente"
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm opacity-50 cursor-not-allowed"
-            >
-              <Download className="size-4" /> Descargar Excel
-            </button>
-          </div>
+        <div>
+          <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-2">
+            {contextoSeleccion}
+          </p>
+          <h1 className="text-3xl font-bold text-[#0A192F]">Datos de Progresión Analítica</h1>
+          <p className="mt-1 text-sm text-slate-500 max-w-2xl">
+            Visualización institucional de matrícula, admisión y retención.
+          </p>
         </div>
 
-        {/* TABLA 1: Matrícula y admisión */}
-        <DataCardView
-          title="Matrícula y admisión por cohorte"
-          description="Matrícula nueva y total por cohorte de ingreso (2022–2026)."
-          defaultView="table"
-          chartComponent={
-            <div className="flex h-64 items-center justify-center rounded-lg bg-gray-50 text-gray-400">
-              Gráfico en desarrollo...
-            </div>
-          }
-          tableComponent={
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="bg-[#FFF9E6]">
-                    <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">Indicador</th>
-                    <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2022</th>
-                    <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2023</th>
-                    <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2024</th>
-                    <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2025</th>
-                    <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">2026</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-600">
-                  <tr>
-                    <td className="py-3.5 px-6 font-medium text-slate-800">Matrícula nueva según cohorte</td>
-                    <td className="py-3.5 px-6">58</td>
-                    <td className="py-3.5 px-6">49</td>
-                    <td className="py-3.5 px-6">60</td>
-                    <td className="py-3.5 px-6">63</td>
-                    <td className="py-3.5 px-6">58</td>
-                  </tr>
-                  <tr className="bg-slate-50/50">
-                    <td className="py-3.5 px-6 font-bold text-slate-900">Matrícula Total</td>
-                    <td className="py-3.5 px-6 font-bold text-slate-900">345</td>
-                    <td className="py-3.5 px-6 font-bold text-slate-900">348</td>
-                    <td className="py-3.5 px-6 font-bold text-slate-900">346</td>
-                    <td className="py-3.5 px-6 font-bold text-slate-900">326</td>
-                    <td className="py-3.5 px-6 font-bold text-slate-900">312</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          }
-        />
+        {/* DRILL-DOWN: mismos widgets que el Dashboard del Director */}
+        {cargando && (
+          <div className="flex flex-col gap-6 animate-pulse p-2" role="status" aria-live="polite">
+            <div className="h-7 bg-gray-200 rounded w-1/3" />
+            <div className="h-64 bg-gray-200 rounded-lg" />
+            <div className="h-48 bg-gray-200 rounded-lg" />
+          </div>
+        )}
+
+        {!cargando && error && (
+          <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200/80 bg-white shadow-sm">
+            <span className="text-sm font-medium text-red-600">{error}</span>
+          </div>
+        )}
+
+        {!cargando && !error && carCodigo && (
+          <div className="space-y-10">
+            {/* TOGGLE GRÁFICO/TABLA: Evolución longitudinal de retención por cohorte */}
+            <DataCardView
+              title="Evolución Longitudinal de Retención"
+              description="Porcentaje de retención por cohorte a lo largo de los años."
+              chartComponent={<EvolucionRetencion datos={evolucionRetencion} mostrarCabecera={false} />}
+              tableComponent={
+                <TablaPeriodos
+                  titulo="Cohortes / Tasas de retención"
+                  descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
+                  indicadores={INDICADORES_RETENCION}
+                  filas={filasProgresion}
+                  mostrarCabecera={false}
+                />
+              }
+            />
+
+            <TablaPeriodos
+              titulo="Ingresos por cohorte"
+              descripcion="Cantidades informadas por vía de admisión para cada cohorte de ingreso."
+              indicadores={INDICADORES_INGRESOS}
+              filas={filasIngreso}
+            />
+
+            <TablaPeriodos
+              titulo="Matrícula anual"
+              descripcion="Matrícula total y participación de mujeres para cada año de medición."
+              indicadores={INDICADORES_MATRICULA}
+              filas={filasMatricula}
+            />
+
+            <TablaPeriodos
+              titulo="Titulación y tiempo de egreso"
+              descripcion="Tasas de titulación y duración real registradas para cada cohorte."
+              indicadores={INDICADORES_TITULACION}
+              filas={filasProgresion}
+            />
+          </div>
+        )}
+
+        {!cargando && !error && !carCodigo && (
+          <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200/80 bg-white shadow-sm">
+            <span className="text-sm font-medium text-slate-500">
+              {sinSeleccion
+                ? 'Seleccione una facultad y una carrera para ver el detalle del Director.'
+                : 'La carrera seleccionada no tiene código en el catálogo institucional; no es posible cargar su detalle.'}
+            </span>
+          </div>
+        )}
 
       </div>
     </div>
