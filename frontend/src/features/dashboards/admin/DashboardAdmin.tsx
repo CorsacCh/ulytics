@@ -1,31 +1,20 @@
-import { useState, type ReactNode } from 'react'
-import { ChevronDown, Plus, X } from 'lucide-react'
+import { useState } from 'react'
 import { DashboardLayout } from '../../../shared/layout/DashboardLayout'
 import type { Section } from '../../../shared/components/Sidebar'
 import { UserManagementPanel } from '../../admin/UserManagementPanel'
 import { CargaDatosPanel } from '../../admin/CargaDatosPanel'
 
 export default function DashboardAdmin() {
-  const [section, setSection] = useState<Section>('Home')
+  const [section, setSection] = useState<Section>('Usuarios y permisos')
   const [open, setOpen] = useState(true)
-  const [period, setPeriod] = useState('2026 - Semestre 1')
-  const [notice, setNotice] = useState('')
-  const [periodModalOpen, setPeriodModalOpen] = useState(false)
-  const flash = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(''), 2600) }
   const go = (label: Section) => { setSection(label) }
 
   return <DashboardLayout section={section} open={open} onToggle={() => setOpen(!open)} onNavigate={go}>
     <div className="mx-auto max-w-[1440px] p-5 sm:p-8 lg:p-10">
-      <header className="mb-8 flex flex-col gap-5 border-b border-[#D9E5F0] pb-7 xl:flex-row xl:items-end xl:justify-between"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#556B7B]">Consola de administración</p><h1 className="text-balance text-3xl font-bold tracking-tight text-[#003366] sm:text-4xl">{section}</h1><p className="mt-2 text-sm text-[#556B7B]">Plataforma para Generar Reporterías de Indicadores de Progresión Académica y Curricular</p></div><div className="flex flex-wrap items-center gap-2"><label className="flex items-center rounded-lg border border-[#D9E5F0] bg-[#FFFFFF] px-3 shadow-sm"><span className="mr-2 text-xs text-[#556B7B]">Período:</span><select value={period} onChange={e => setPeriod(e.target.value)} className="bg-transparent py-2 text-sm font-semibold text-[#003366] outline-none" aria-label="Seleccionar período"><option>2026 - Semestre 1</option><option>2025 - Semestre 2</option><option>2025 - Semestre 1</option></select><ChevronDown className="ml-2 size-3.5 text-[#556B7B]" /></label></div></header>
-      {section === 'Períodos académicos' && <Periods setPeriod={setPeriod} onNew={() => setPeriodModalOpen(true)} flash={flash} />}
+      <header className="mb-8 flex flex-col gap-5 border-b border-[#D9E5F0] pb-7 xl:flex-row xl:items-end xl:justify-between"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#556B7B]">Consola de administración</p><h1 className="text-balance text-3xl font-bold tracking-tight text-[#003366] sm:text-4xl">{section}</h1><p className="mt-2 text-sm text-[#556B7B]">Plataforma para Generar Reporterías de Indicadores de Progresión Académica y Curricular</p></div></header>
       {section === 'Cargas de datos' && <CargaDatosPanel />}
       {section === 'Usuarios y permisos' && <UserManagementPanel />}
     </div>
-    {periodModalOpen && <PeriodModal close={() => setPeriodModalOpen(false)} flash={flash} />}{notice && <div role="status" className="fixed bottom-5 right-5 rounded-lg bg-[#003366] px-4 py-3 text-sm font-medium text-white shadow-xl">{notice}</div>}
   </DashboardLayout>
 }
 
-function Periods({ setPeriod, onNew, flash }: { setPeriod: (value: string) => void; onNew: () => void; flash: (message: string) => void }) { const rows = ['2026 - Semestre 1', '2025 - Semestre 2', '2025 - Semestre 1', '2024 - Semestre 2']; return <Panel title="Períodos académicos" eyebrow="Configuración temporal" action="Nuevo período" onAction={onNew}><p className="mb-5 text-sm text-muted-foreground">Define los períodos disponibles para la carga, publicación y generación de reporterías.</p><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground"><th className="pb-3">Período</th><th className="pb-3">Estado</th><th className="pb-3">Datos disponibles</th><th className="pb-3 text-right">Acción</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row} className="border-b border-border/70"><td className="py-4 font-semibold">{row}</td><td className="py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${index === 0 ? 'bg-progress-efficient/15 text-progress-efficient' : 'bg-muted text-muted-foreground'}`}>{index === 0 ? 'Activo' : 'Cerrado'}</span></td><td className="py-4 text-muted-foreground">{index < 2 ? 'Matrícula · Notas · Retención' : 'Matrícula · Notas'}</td><td className="py-4 text-right"><button onClick={() => { setPeriod(row); flash(`Período ${row} seleccionado`) }} className="font-semibold underline underline-offset-4">Seleccionar</button></td></tr>)}</tbody></table></div></Panel> }
-function Field({ label, value }: { label: string; value: string }) { return <label className="flex flex-col gap-2 text-sm font-semibold">{label}<input defaultValue={value} className="rounded-lg border border-border bg-background px-3 py-2.5 font-normal outline-none focus:ring-2 focus:ring-ring" /></label> }
-function Panel({ title, eyebrow, action, onAction, children }: { title: string; eyebrow: string; action?: string; onAction?: () => void; children: ReactNode }) { return <section className="rounded-xl border border-[#b2b2b2] bg-[#ffffff] p-5 shadow-sm sm:p-6"><div className="mb-6 flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-[#878787]">{eyebrow}</p><h2 className="mt-1 text-xl font-bold tracking-tight text-[#1d1d1b]">{title}</h2></div>{action && <button onClick={onAction} className="flex items-center gap-2 rounded-lg bg-[#ffc82e] px-3 py-2 text-sm font-semibold text-[#1d1d1b]"><Plus className="size-4" />{action}</button>}</div>{children}</section> }
-function PeriodModal({ close, flash }: { close: () => void; flash: (message: string) => void }) { return <div className="fixed inset-0 z-10 flex items-center justify-center bg-foreground/30 p-5"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl"><div className="flex items-center justify-between"><h2 className="text-xl font-bold">Nuevo período académico</h2><button onClick={close} aria-label="Cerrar"><X className="size-5" /></button></div><div className="mt-6 flex flex-col gap-4"><Field label="Año" value="2027" /><Field label="Nombre del período" value="Semestre 1" /></div><button onClick={() => { close(); flash('Período creado correctamente') }} className="mt-6 w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold">Crear período</button></div></div> }

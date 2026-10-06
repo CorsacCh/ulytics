@@ -1,4 +1,4 @@
-import { ChevronLeft, LayoutDashboard, BarChart3, Settings, Users, FileText, LogOut, BookOpen, type LucideIcon } from 'lucide-react'
+import { BarChart3, ChevronLeft, FileText, LayoutDashboard, LogOut, Users, BookOpen, type LucideIcon } from 'lucide-react'
 import ulyticsLogo from '../assets/branding/logo2_ULYTICS.jpeg'
 import type { AuthUser } from '../../features/auth/types';
 
@@ -29,11 +29,8 @@ const academicLinks: SidebarLink[] = [
 
 // Opciones para ADMIN
 const adminLinks: SidebarLink[] = [
-  { label: 'Home', icon: LayoutDashboard },
-  { label: 'Períodos académicos', icon: BarChart3 },
   { label: 'Cargas de datos', icon: FileText },
   { label: 'Usuarios y permisos', icon: Users },
-  { label: 'Configuración', icon: Settings },
 ]
 
 // Roles de perfiles
