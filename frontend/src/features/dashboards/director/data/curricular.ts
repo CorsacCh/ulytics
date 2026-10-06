@@ -35,13 +35,6 @@ export interface FilaCritica {
   estado_dato: string | null;
 }
 
-// Una asignatura-semestre con su tasa de reprobación por año.
-export interface FilaAsignaturaCritica {
-  codigo: string;
-  semestre: number | null;
-  valores: Record<number, number | null>;
-}
-
 // Las columnas nivel_* son conteos de estudiantes, no porcentajes: se muestran tal cual.
 export const INDICADORES_EFICIENCIA: Indicador[] = [
   { titulo: 'Nº Alumnos regulares', llave: 'total_alumnos_regulares' },
@@ -74,22 +67,3 @@ export function obtenerAnios(anios: number[]): number[] {
   return [...new Set(anios)].sort((a, b) => a - b);
 }
 
-// El endpoint devuelve una fila por asignatura y año de medición; la tabla necesita una fila
-// por código base y semestre, así que agrupamos las versiones del mismo código institucional.
-export function agruparAsignaturasCriticas(criticas: FilaCritica[]): FilaAsignaturaCritica[] {
-  const agrupadas = new Map<string, FilaAsignaturaCritica>();
-
-  criticas.forEach((critica) => {
-    const clave = `${critica.asig_codigo_base}-${critica.semestre ?? 'sin-semestre'}`;
-    const fila = agrupadas.get(clave) ?? {
-      codigo: critica.asig_codigo_base,
-      semestre: critica.semestre,
-      valores: {},
-    };
-
-    fila.valores[critica.anio_medicion] = critica.tasa_reprobacion;
-    agrupadas.set(clave, fila);
-  });
-
-  return [...agrupadas.values()];
-}

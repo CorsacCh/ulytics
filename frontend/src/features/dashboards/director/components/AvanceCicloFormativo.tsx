@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { SIN_DATOS, type FilaAvanceCurricular } from '../data/curricular';
+import { formatearValorCurricular } from '../../../../shared/utils/formatters';
 
 interface Props {
   data: FilaAvanceCurricular[];
@@ -98,7 +99,12 @@ export function AvanceCicloFormativo({
               />
               <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                formatter={(value, name) => [`${value}%`, name]}
+                // Las etapas llegan como puntos porcentuales decimales (35.5 = 35,5 %)
+                // y null cuando la celda de origen estaba vacía o contenía un guion.
+                formatter={(value, name) => [
+                  formatearValorCurricular(value == null ? null : Number(value), true),
+                  name,
+                ]}
               />
               <Legend wrapperStyle={{ paddingTop: '12px' }} />
               {CATEGORIAS.map((categoria) => (

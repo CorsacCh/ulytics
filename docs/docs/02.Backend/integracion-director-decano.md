@@ -24,16 +24,22 @@ otro código, un array o un objeto obtiene 403.
 | `kpis.titulacion_oportuna` | `Fact_Progresion_Academica.tasa_titulacion_oportuna` | Cohorte |
 | `kpis.tiempo_promedio` | `Fact_Progresion_Academica.duracion_real_semestres` | Cohorte |
 | `resumen.registros_asignaturas_informadas` | Registros de `Fact_Asignatura_Critica` con estado INFORMADO y tasa no nula | Año de medición |
+| `resumen.total_asignaturas_criticas` | Registros de `Fact_Asignatura_Critica` con reprobación ≥ 30 % (normalizando fracciones históricas 0–1) | Año de medición |
+| `resumen.top_percentil_retencion` | Posición de la carrera entre sus pares con `retencion_a1` informada en la cohorte | Cohorte |
 
 Los indicadores ausentes conservan `null`, presentado como “Sin datos”. Un
 cero informado sigue siendo cero. El conteo de asignaturas representa
 registros por asignatura/semestre, no asignaturas únicas: no aplica un umbral
 de reprobación ni vuelve a escalar porcentajes. Sin filas para el año, el
-conteo es `null`; con filas pero ninguna tasa informada, es cero.
+conteo es `null`; con filas pero ninguna tasa informada, es cero. En cambio,
+`total_asignaturas_criticas` sí aplica el umbral de dominio “reprobación
+mayor o igual a 30 %”, normalizando los valores guardados como fracción 0–1.
 
-Se retiró el percentil institucional hasta contar con una definición validada
-y autorización para utilizar información de otras carreras. El Home muestra
-el ámbito de la cuenta en su lugar.
+El percentil institucional se restauró por decisión de producto: es la única
+consulta que cruza carreras, permanece limitada a la cohorte seleccionada y
+solo se emite cuando la propia carrera tiene `retencion_a1` informada; sin
+datos suficientes el valor queda en `null`. Su uso sigue sujeto a la
+autorización vigente sobre información de otras carreras.
 
 ## Presentación y reportería
 

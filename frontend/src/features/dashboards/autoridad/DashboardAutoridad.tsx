@@ -4,16 +4,20 @@ import { TrendingUp, Building2, BarChart3, AlertCircle /* y los que ya tenías *
 
 import { DashboardLayout } from '../../../shared/layout/DashboardLayout';
 import type { Section } from '../../../shared/components/Sidebar';
-import { KpiCard } from '../../../shared/components/dashboard/KpiCard';
 import DashboardHeader from '../../../shared/components/dashboard/DashboardHeader';
 
 import { ProgresionAnaliticaAutoridad } from './components/ProgresionAnaliticaAutoridad';
 import { ProgresionCurricularAutoridad } from './components/ProgresionCurricularAutoridad';
 import { ReporteriaAutoridad } from './components/ReporteriaAutoridad';
 
-import { institutionalMetrics } from './data/metrics';
-import { facultyRetention, enrollmentTrend, facultyDistribution } from './data/chartData';
-import { careerPerformance } from './data/careerData';
+import { autoridadHomeData } from './data/homeData';
+import type { AutoridadHomeData } from './data/homeData';
+
+const ALERTA_ESTILOS: Record<AutoridadHomeData['alertas'][number]['tipo'], { badge: string; icono: string }> = {
+  critica: { badge: 'bg-amber-100 text-amber-600', icono: '!' },
+  positiva: { badge: 'bg-emerald-100 text-emerald-600', icono: '✓' },
+  informativa: { badge: 'bg-blue-100 text-blue-600', icono: 'i' },
+};
 
 function CareerRow({ career }: { career: any }) {
   return (
@@ -47,15 +51,71 @@ export default function DashboardAutoridad() {
       case 'Reportería':
         return <ReporteriaAutoridad />;
       case 'Home':
-      default:
+      default: {
+        const { kpis, alertas, graficos } = autoridadHomeData;
         return (
           <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
             <DashboardHeader title="Reporte Institucional" subtitle="NIVEL CENTRAL · AUTORIDAD" />
 
+            {/* KPIs institucionales con fallbacks para valores nulos */}
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {institutionalMetrics.map((metric) => (
-                <KpiCard key={metric.label} description={metric.trend} {...(metric as any)} variant="spacious" />
-              ))}
+              <div className="bg-white border rounded-lg shadow-sm p-6">
+                <h3 className="text-gray-500 text-sm font-medium mb-1">Matrícula Total</h3>
+                <p className="text-3xl font-bold text-gray-800">
+                  {typeof kpis.matricula_total === 'number' ? kpis.matricula_total.toLocaleString() : 'N/A'}
+                </p>
+                <p
+                  className={`text-sm mt-2 ${
+                    kpis.crecimiento_matricula === null
+                      ? 'text-gray-400'
+                      : kpis.crecimiento_matricula > 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                  }`}
+                >
+                  {kpis.crecimiento_matricula !== null
+                    ? `${kpis.crecimiento_matricula > 0 ? '+' : ''}${kpis.crecimiento_matricula}% vs anterior`
+                    : 'S/I'}
+                </p>
+              </div>
+
+              <div className="bg-white border rounded-lg shadow-sm p-6">
+                <h3 className="text-gray-500 text-sm font-medium mb-1">Retención Institucional</h3>
+                <p className="text-3xl font-bold text-gray-800">
+                  {kpis.retencion_institucional !== null ? `${kpis.retencion_institucional}%` : 'N/A'}
+                </p>
+                <p
+                  className={`text-sm mt-2 ${
+                    kpis.crecimiento_retencion === null
+                      ? 'text-gray-400'
+                      : kpis.crecimiento_retencion > 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                  }`}
+                >
+                  {kpis.crecimiento_retencion !== null
+                    ? `${kpis.crecimiento_retencion > 0 ? '+' : ''}${kpis.crecimiento_retencion}% vs anterior`
+                    : 'S/I'}
+                </p>
+              </div>
+
+              <div className="bg-white border rounded-lg shadow-sm p-6">
+                <h3 className="text-gray-500 text-sm font-medium mb-1">Titulación Total</h3>
+                <p className="text-3xl font-bold text-gray-800">
+                  {kpis.tasa_titulacion_total !== null ? `${kpis.tasa_titulacion_total}%` : 'N/A'}
+                </p>
+                <p className="text-sm mt-2 text-gray-400">Meta institucional</p>
+              </div>
+
+              <div className="bg-white border rounded-lg shadow-sm p-6">
+                <h3 className="text-gray-500 text-sm font-medium mb-1">Carreras Monitoreadas</h3>
+                <p className="text-3xl font-bold text-gray-800">
+                  {typeof kpis.carreras_monitoreadas === 'number'
+                    ? kpis.carreras_monitoreadas.toLocaleString()
+                    : 'N/A'}
+                </p>
+                <p className="text-sm mt-2 text-green-600">En seguimiento</p>
+              </div>
             </section>
 
             <section className="grid gap-6 xl:grid-cols-2">
@@ -69,7 +129,7 @@ export default function DashboardAutoridad() {
                   <TrendingUp className="size-5 text-emerald-500" />
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={enrollmentTrend}>
+                  <LineChart data={graficos.evolucionMatricula}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="year" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -90,8 +150,8 @@ export default function DashboardAutoridad() {
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
-                    <Pie data={facultyDistribution} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${value}%`} outerRadius={100} dataKey="value">
-                      {facultyDistribution.map((entry) => (
+                    <Pie data={graficos.distribucionFacultad} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${value}%`} outerRadius={100} dataKey="value">
+                      {graficos.distribucionFacultad.map((entry) => (
                         <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                       ))}
                     </Pie>
@@ -123,7 +183,7 @@ export default function DashboardAutoridad() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {careerPerformance.map((career) => (
+                      {graficos.topCarreras.map((career) => (
                         <CareerRow key={career.name} career={career} />
                       ))}
                     </tbody>
@@ -142,7 +202,7 @@ export default function DashboardAutoridad() {
                     <AlertCircle className="size-5 text-[#FFB800]" />
                   </div>
                   <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={facultyRetention} layout="vertical" margin={{ left: 100, right: 20 }}>
+                    <BarChart data={graficos.retencionPorFacultad} layout="vertical" margin={{ left: 100, right: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
                       <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <YAxis dataKey="faculty" type="category" width={100} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -155,25 +215,28 @@ export default function DashboardAutoridad() {
                 {/* Resumen Ejecutivo */}
                 <article className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
                   <h3 className="text-lg font-bold text-slate-800 mb-4">Puntos de Atención Institucional</h3>
-                  <ul className="space-y-4">
-                    <li className="flex items-start gap-3 text-sm">
-                      <span className="flex-shrink-0 mt-0.5 flex size-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 font-bold">!</span>
-                      <span className="text-slate-700">Titulación oportuna en <strong>Pedagogía</strong> está en 78%, requiere seguimiento activo.</span>
-                    </li>
-                    <li className="flex items-start gap-3 text-sm">
-                      <span className="flex-shrink-0 mt-0.5 flex size-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold">✓</span>
-                      <span className="text-slate-700">Matrícula en crecimiento constante: <strong>+2.9%</strong> vs año anterior.</span>
-                    </li>
-                    <li className="flex items-start gap-3 text-sm">
-                      <span className="flex-shrink-0 mt-0.5 flex size-5 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold">i</span>
-                      <span className="text-slate-700">Humanidades presenta la menor retención (79%), considerar programa de intervención.</span>
-                    </li>
-                  </ul>
+                  {alertas.length > 0 ? (
+                    <ul className="space-y-4">
+                      {alertas.map((alerta) => (
+                        <li key={alerta.mensaje} className="flex items-start gap-3 text-sm">
+                          <span
+                            className={`flex-shrink-0 mt-0.5 flex size-5 items-center justify-center rounded-full font-bold ${ALERTA_ESTILOS[alerta.tipo].badge}`}
+                          >
+                            {ALERTA_ESTILOS[alerta.tipo].icono}
+                          </span>
+                          <span className="text-slate-700">{alerta.mensaje}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-500">Sin alertas institucionales activas.</p>
+                  )}
                 </article>
               </div>
             </section>
           </div>
         );
+      }
     }
   };
 

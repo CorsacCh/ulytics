@@ -71,3 +71,47 @@ export const datosInstitucionales: Record<string, string[]> = {
 };
 
 export const facultades = Object.keys(datosInstitucionales);
+
+export interface OpcionFacultad {
+  id: string;
+  nombre: string;
+}
+
+export interface OpcionCarrera {
+  id: string;
+  nombre: string;
+  facultadId: string;
+  // Código oficial de la carrera; se completa desde el catálogo institucional
+  // (GET /api/ambitos) y permanece ausente si no hay catálogo disponible.
+  car_codigo?: string;
+}
+
+// Selectores jerárquicos: la facultad se identifica por su nombre y cada
+// carrera lleva su facultad embebida en el id para garantizar unicidad global.
+export const facultadesOptions: OpcionFacultad[] = Object.keys(datosInstitucionales).map(
+  (nombre) => ({ id: nombre, nombre })
+);
+
+export const carrerasOptions: OpcionCarrera[] = Object.entries(datosInstitucionales).flatMap(
+  ([facultadId, carreras]) =>
+    carreras.map((nombre) => ({
+      id: `${facultadId}::${nombre}`,
+      nombre,
+      facultadId,
+    }))
+);
+
+// Fusiona los códigos oficiales del catálogo con las opciones estáticas,
+// emparejando por nombre exacto de carrera. Sin catálogo o sin coincidencia,
+// car_codigo queda ausente y el selector muestra solo el nombre.
+export function aplicarCodigosCarreras(
+  opciones: OpcionCarrera[],
+  catalogo: { car_codigo: string; nombre: string }[],
+): OpcionCarrera[] {
+  if (catalogo.length === 0) return opciones;
+  const codigos = new Map(catalogo.map((carrera) => [carrera.nombre, carrera.car_codigo]));
+  return opciones.map((opcion) => {
+    const car_codigo = codigos.get(opcion.nombre);
+    return car_codigo ? { ...opcion, car_codigo } : opcion;
+  });
+}

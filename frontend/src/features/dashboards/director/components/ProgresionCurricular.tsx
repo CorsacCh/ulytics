@@ -4,8 +4,6 @@ import { useAuth } from '../../../auth/AuthContext';
 import {
   COLUMNAS_AVANCE,
   INDICADORES_EFICIENCIA,
-  agruparAsignaturasCriticas,
-  obtenerAnios,
   type FilaAvanceCurricular,
   type FilaCritica,
   type FilaEficiencia,
@@ -122,11 +120,6 @@ export function ProgresionCurricular() {
     },
   }));
 
-  // Las asignaturas críticas llegan una fila por año y se agrupan por asignatura-semestre.
-  const filasCriticas = agruparAsignaturasCriticas(criticas);
-  const aniosCriticas = obtenerAnios(criticas.map((critica) => critica.anio_medicion));
-
-
   return (
     <div className="mx-auto max-w-[1440px] space-y-10 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
       {/* HEADER INSTITUCIONAL */}
@@ -207,8 +200,7 @@ export function ProgresionCurricular() {
             <TablaAsignaturasCriticas
               titulo="Asignaturas informadas en la carga"
               descripcion="Códigos, semestres y tasas informados en el archivo de origen, sin aplicar una clasificación adicional."
-              filas={filasCriticas}
-              anios={aniosCriticas}
+              filas={criticas}
               mensajeVacio="Todavía no hay asignaturas informadas para esta carrera."
             />
           </div>

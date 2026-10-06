@@ -40,6 +40,15 @@ after(async () => {
   }
 });
 
+// Pares del ranking de retención para la cohorte 2022: la carrera de la sesión
+// lidera, por lo que ocupa el Top 25 % entre las cuatro carreras informadas.
+const RANKING_RETENCION = [
+  { car_codigo: 'CAR-01', cohorte: 2022, retencion_a1: '90.25' },
+  { car_codigo: 'CAR-02', cohorte: 2022, retencion_a1: '85' },
+  { car_codigo: 'CAR-03', cohorte: 2022, retencion_a1: '80' },
+  { car_codigo: 'CAR-04', cohorte: 2022, retencion_a1: '75' }
+];
+
 function fixture(context, { role = 'DIRECTOR', scope = 'PROGRAMA', permission = true, temporary = false, empty = false } = {}) {
   const user = {
     id_usuario: 1,
@@ -84,6 +93,11 @@ function fixture(context, { role = 'DIRECTOR', scope = 'PROGRAMA', permission = 
     ]]
   ];
   const queries = modelData.map(([model, rows]) => context.mock.method(model, 'findAll', async (options) => {
+    if (model === FactProgresion && options.where && 'cohorte' in options.where && !('car_codigo' in options.where)) {
+      // Ranking institucional: única consulta entre carreras, limitada a la cohorte.
+      assert.equal(typeof options.where.cohorte, 'number', 'el ranking se limita a la cohorte seleccionada');
+      return empty ? [] : RANKING_RETENCION;
+    }
     assert.deepEqual(options.where, { car_codigo: 'CAR-01' }, 'cada consulta debe restringirse a la carrera autorizada');
     return empty ? [] : rows;
   }));
@@ -140,7 +154,11 @@ test('Home usa carrera de sesión y separa cohorte, ingresos y matrícula anual'
     titulacion_oportuna: 0,
     tiempo_promedio: 11.5
   });
-  assert.deepEqual(body.resumen, { registros_asignaturas_informadas: 3 });
+  assert.deepEqual(body.resumen, {
+    registros_asignaturas_informadas: 3,
+    total_asignaturas_criticas: 3,
+    top_percentil_retencion: 25
+  });
 });
 
 test('Home deriva períodos históricos y selección inicial desde las tablas autorizadas', async (context) => {
@@ -160,6 +178,10 @@ test('Home conserva null cuando no hay datos y no transforma ausencias en matrí
   assert.equal(body.kpis.matricula_total, null);
   assert.equal(body.kpis.titulacion_oportuna, null);
   assert.equal(body.resumen.registros_asignaturas_informadas, 0);
+  // Sin tasa ≥ 30 % en el año 2025 no hay alertas; sin retención propia en la
+  // cohorte 2020 no se calcula ranking.
+  assert.equal(body.resumen.total_asignaturas_criticas, 0);
+  assert.equal(body.resumen.top_percentil_retencion, null);
 });
 
 test('Home sin cargas devuelve catálogos vacíos y selección nula', async (context) => {
@@ -170,6 +192,8 @@ test('Home sin cargas devuelve catálogos vacíos y selección nula', async (con
   assert.deepEqual(body.seleccion, { cohorte: null, anio_medicion: null });
   assert.ok(Object.values(body.kpis).every((value) => value === null));
   assert.equal(body.resumen.registros_asignaturas_informadas, null);
+  assert.equal(body.resumen.total_asignaturas_criticas, null);
+  assert.equal(body.resumen.top_percentil_retencion, null);
 });
 
 for (const query of ['?cohorte=abc', '?cohorte=2022.5', '?cohorte=2022&cohorte=2023', '?anio_medicion[x]=2024', '?anio_medicion=', '?anio_medicion=Infinity']) {

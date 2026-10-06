@@ -63,16 +63,10 @@ export function seleccionarAsignaturasHome(
       || (a.asignatura.semestre ?? 0) - (b.asignatura.semestre ?? 0));
 }
 
-export function formatearValorCurricular(valor: number | null | undefined, porcentaje = false): string {
-  if (valor == null) return 'Sin datos';
-  return `${valor.toLocaleString('es-CL', { maximumFractionDigits: 2 })}${porcentaje ? '%' : ''}`;
-}
-
-export function describirEstadoAsignatura(estado: string | null): string {
-  switch (estado) {
-    case 'INFORMADO': return 'Informado';
-    case 'GUION_ORIGEN': return 'Guion en el Excel';
-    case 'VACIO_ORIGEN': return 'Celda vacía en el Excel';
-    default: return 'Estado no disponible';
-  }
-}
+// Única fuente de formateo curricular: Decano, Director y Autoridad importan
+// de shared/utils/formatters; aquí solo se reexporta para no romper los
+// consumidores de este módulo.
+export {
+  describirEstadoAsignatura,
+  formatearValorCurricular,
+} from '../../../shared/utils/formatters';

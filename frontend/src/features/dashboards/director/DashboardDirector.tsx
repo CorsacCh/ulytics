@@ -183,9 +183,9 @@ export default function DashboardDirector() {
                     variant="spacious"
                   />
                   <KpiCard
-                    label="Titulación oportuna"
+                    label="Titulación total"
                     value={mostrarValor(data.kpis.titulacion_oportuna, '%')}
-                    description={`TTO · Cohorte ${data.seleccion.cohorte ?? '—'}`}
+                    description={`Cohorte ${data.seleccion.cohorte ?? '—'}`}
                     positive
                     icon={BookOpen}
                     variant="spacious"
@@ -202,31 +202,43 @@ export default function DashboardDirector() {
 
                 {/* SECCIÓN DE RESUMEN EJECUTIVO */}
                 <section className="grid gap-6 mt-8 md:grid-cols-2">
-                  {/* Contexto del ámbito autorizado */}
+                  {/* Widget de Posicionamiento */}
                   <div className="bg-white border rounded-lg shadow-sm p-6 flex flex-col justify-center items-start">
                     <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">
-                      Ámbito académico
+                      Comparativa Institucional
                     </h2>
-                    <p className="text-xl font-bold text-[#0A192F] mb-2">{data.carrera.nombre}</p>
-                    <p className="text-gray-600">Código {data.carrera.codigo}. Los indicadores corresponden a esta carrera.</p>
-                    <p className="mt-3 text-sm text-gray-500">
-                      La cohorte filtra ingresos y progresión; el año de medición filtra matrícula y asignaturas.
-                      “Sin datos” indica que el valor no está disponible en la carga.
-                    </p>
+                    {data.resumen.top_percentil_retencion !== null ? (
+                      <>
+                        <p className="text-3xl font-extrabold text-blue-600 mb-2">
+                          Top {data.resumen.top_percentil_retencion}%
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          Tu carrera se encuentra en el {data.resumen.top_percentil_retencion}%
+                          superior de retención institucional para la cohorte{' '}
+                          {data.seleccion.cohorte ?? '—'}.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gray-500 text-sm">
+                        Datos insuficientes para calcular el ranking de esta cohorte.
+                      </p>
+                    )}
                   </div>
 
-                  {/* Registros informados, sin clasificación automática */}
+                  {/* Widget de Alertas Curriculares */}
                   <div className="bg-white border rounded-lg shadow-sm p-6 flex flex-col justify-between items-start">
                     <div>
                       <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        Asignaturas informadas en la carga
+                        Alertas Curriculares
                       </h2>
-                      <p className="text-3xl font-extrabold text-blue-600 mb-2">
-                        {mostrarValor(data.resumen.registros_asignaturas_informadas)}
+                      <p className="text-3xl font-extrabold text-orange-500 mb-2">
+                        {data.resumen.total_asignaturas_criticas !== null
+                          ? `${data.resumen.total_asignaturas_criticas} asignaturas`
+                          : 'Sin datos'}
                       </p>
-                      <p className="text-gray-600">
-                        Registros por asignatura y semestre con tasa de reprobación informada
-                        en el año {data.seleccion.anio_medicion ?? '—'}. Una asignatura puede aparecer en más de un semestre.
+                      <p className="text-gray-600 text-sm">
+                        registran tasas de reprobación en nivel crítico o de atención (≥ 30%)
+                        en el año {data.seleccion.anio_medicion ?? '—'}.
                       </p>
                     </div>
                     <button

@@ -14,8 +14,6 @@ import {
 import {
   COLUMNAS_AVANCE,
   INDICADORES_EFICIENCIA,
-  agruparAsignaturasCriticas,
-  obtenerAnios,
   type FilaAvanceCurricular,
   type FilaCritica,
   type FilaEficiencia,
@@ -277,9 +275,6 @@ export function ReporteriaDirector() {
     },
   }));
 
-  const filasCriticas = agruparAsignaturasCriticas(criticas);
-  const aniosCriticas = obtenerAnios(criticas.map((critica) => critica.anio_medicion));
-
   const datosEficiencia: FilaExportable[] = eficiencia.map((fila) => ({
     Cohorte: fila.cohorte,
     'Nº Alumnos regulares': fila.total_alumnos_regulares,
@@ -429,8 +424,7 @@ export function ReporteriaDirector() {
         <TablaAsignaturasCriticas
           titulo="Asignaturas informadas en la carga"
           descripcion="Códigos, semestres y tasas informados en el archivo de origen, sin aplicar una clasificación adicional."
-          filas={filasCriticas}
-          anios={aniosCriticas}
+          filas={criticas}
         />
       ),
       CATEGORIA_CURRICULAR,

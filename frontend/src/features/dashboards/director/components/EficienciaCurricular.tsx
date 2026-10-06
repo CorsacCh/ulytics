@@ -85,7 +85,7 @@ export function EficienciaCurricular({
               />
               <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                formatter={(value, name) => [`${value} alumnos`, name]}
+                formatter={(value, name) => [value == null ? 'Sin datos' : `${value} alumnos`, name]}
               />
               <Legend wrapperStyle={{ paddingTop: '12px' }} />
               {TRAMOS.map((tramo) => (

@@ -11,7 +11,11 @@ export interface HomeDashboardData {
     titulacion_oportuna: number | null;
     tiempo_promedio: number | null;
   };
-  resumen: { registros_asignaturas_informadas: number | null };
+  resumen: {
+    registros_asignaturas_informadas: number | null;
+    top_percentil_retencion: number | null;
+    total_asignaturas_criticas: number | null;
+  };
 }
 
 export interface FiltrosHomeDirector {

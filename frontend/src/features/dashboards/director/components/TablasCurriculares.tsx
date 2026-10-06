@@ -1,6 +1,7 @@
 // Tablas de progresión curricular reutilizadas por la vista de progresión y por
 // la vista de reportería. Solo exporta componentes para no romper Fast Refresh.
-import { SIN_DATOS, obtenerAnios, type FilaAsignaturaCritica, type Indicador } from '../data/curricular';
+import { SIN_DATOS, obtenerAnios, type FilaCritica, type Indicador } from '../data/curricular';
+import { formatearValorCurricular, pivotarAsignaturasPorAnio } from '../../../../shared/utils/formatters';
 import type { FilaPeriodo } from '../data/indicadoresProgresion';
 
 interface TablaIndicadoresProps {
@@ -25,8 +26,7 @@ interface TablaAvanceProps {
 interface TablaCriticasProps {
   titulo: string;
   descripcion: string;
-  filas: FilaAsignaturaCritica[];
-  anios: number[];
+  filas: FilaCritica[];
   mensajeVacio?: string;
 }
 
@@ -169,14 +169,16 @@ export function TablaAvance({
   );
 }
 
-// Una fila por asignatura-semestre con la tasa de reprobación de cada año.
+// Tabla pivotada: una fila única por asignatura (código base) y semestre, con
+// una columna por año de medición. Vacíos y guiones se muestran como "-".
 export function TablaAsignaturasCriticas({
   titulo,
   descripcion,
   filas,
-  anios,
   mensajeVacio = SIN_DATOS,
 }: TablaCriticasProps) {
+  const { anios, filas: agrupadas } = pivotarAsignaturasPorAnio(filas);
+
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
       <div className="border-b border-slate-100 px-6 py-4">
@@ -184,7 +186,7 @@ export function TablaAsignaturasCriticas({
         <p className="text-xs text-slate-500 mt-0.5">{descripcion}</p>
       </div>
 
-      {filas.length === 0 || anios.length === 0 ? (
+      {anios.length === 0 || agrupadas.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
       ) : (
         <div className="overflow-x-auto">
@@ -192,7 +194,7 @@ export function TablaAsignaturasCriticas({
             <thead>
               <tr className="bg-[#FFF9E6]">
                 <th className="py-3 px-6 font-semibold text-slate-700 border-b border-slate-200">
-                  Códigos de asignaturas
+                  Código de asignatura
                 </th>
                 <th className="py-3 px-6 text-center font-semibold text-slate-700 border-b border-slate-200">
                   Semestre
@@ -208,20 +210,27 @@ export function TablaAsignaturasCriticas({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600">
-              {filas.map((fila) => (
+              {agrupadas.map((fila) => (
                 <tr
-                  key={`${fila.codigo}-${fila.semestre ?? 'sin-semestre'}`}
+                  key={`${fila.codigo_base}-${fila.semestre ?? 'sin-semestre'}`}
                   className="hover:bg-slate-50/60"
                 >
-                  <td className="py-3.5 px-6 font-bold text-slate-900">{fila.codigo}</td>
-                  <td className="py-3.5 px-6 text-center">
-                    <Celda valor={fila.semestre} />
+                  <td className="py-3.5 px-6 font-medium text-slate-900">{fila.codigo_base}</td>
+                  <td className="py-3.5 px-6 text-center tabular-nums">
+                    {fila.semestre ?? <span className="text-slate-400">-</span>}
                   </td>
-                  {anios.map((anio) => (
-                    <td key={anio} className="py-3.5 px-6 text-center">
-                      <Celda valor={fila.valores[anio] ?? null} sufijo="%" />
-                    </td>
-                  ))}
+                  {anios.map((anio) => {
+                    const tasa = fila.valoresPorAnio[anio]?.tasa_reprobacion;
+                    return (
+                      <td key={anio} className="py-3.5 px-6 text-center tabular-nums">
+                        {tasa == null ? (
+                          <span className="text-slate-400">-</span>
+                        ) : (
+                          formatearValorCurricular(tasa, true)
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
