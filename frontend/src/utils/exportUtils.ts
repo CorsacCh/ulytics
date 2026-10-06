@@ -63,57 +63,62 @@ export async function exportSelectedToPDF(
 
   let y = yFecha + 10;
 
+  await document.fonts.ready;
   for (const modulo of modules) {
     const ids = [modulo.id, ...(modulo.extraIds ?? [])];
-    const elementos = ids
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => el !== null);
-    if (elementos.length === 0) continue;
+    for (const id of ids) {
+      const raiz = document.getElementById(id);
+      if (!raiz) throw new Error(`No se encontró el bloque PDF: ${id}`);
+      // Los nuevos módulos delimitan gráficos y tablas cortas completos.
+      // Los módulos antiguos del director conservan su captura de raíz.
+      const bloques = Array.from(raiz.querySelectorAll<HTMLElement>('[data-pdf-block]'))
+        .filter((bloque) => !bloque.parentElement?.closest('[data-pdf-block]'));
+      const elementos = bloques.length ? bloques : [raiz];
 
-    // Si no hay espacio ni para el título, empezar en una página nueva.
-    if (y + 12 > pageHeight - MARGEN_MM) {
-      pdf.addPage();
-      y = MARGEN_MM;
-    }
+      for (const element of elementos) {
+        await esperar(ESPERA_RENDER_MS);
+        const contenedores = Array.from(element.querySelectorAll<HTMLElement>('.recharts-responsive-container'));
+        if (contenedores.some((contenedor) => !contenedor.querySelector('svg'))) {
+          throw new Error('El gráfico todavía no está listo para exportar. Intenta nuevamente.');
+        }
+        const canvas = await capturarElemento(element, html2canvas);
+        if (canvas.width === 0 || canvas.height === 0) throw new Error('El bloque PDF no tiene dimensiones.');
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(12);
-    pdf.text(modulo.label, MARGEN_MM, y);
-    y += 6;
-
-    for (const element of elementos) {
-      // Margen mínimo para que React termine de pintar este bloque.
-      await esperar(ESPERA_RENDER_MS);
-
-      const canvas = await capturarElemento(element, html2canvas);
-      if (canvas.width === 0 || canvas.height === 0) continue;
-
-    // px de canvas por mm de PDF (html2canvas usa la misma densidad en ambos ejes).
-      const pxPorMm = canvas.width / anchoUtil;
-      let offsetPx = 0;
-
-      while (offsetPx < canvas.height) {
-        const disponibleMm = pageHeight - MARGEN_MM - y;
-        const altoSlicePx = Math.min(Math.floor(disponibleMm * pxPorMm), canvas.height - offsetPx);
-        if (altoSlicePx <= 0) break;
-
-        const recorte = recortarCanvas(canvas, offsetPx, altoSlicePx);
-        const altoMm = (altoSlicePx * anchoUtil) / canvas.width;
-        pdf.addImage(recorte.toDataURL('image/png'), 'PNG', MARGEN_MM, y, anchoUtil, altoMm);
-
-        offsetPx += altoSlicePx;
-        y += altoMm;
-
-        if (offsetPx < canvas.height) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        const tituloBloque = pdf.splitTextToSize(modulo.label, anchoUtil);
+        const altoTitulo = tituloBloque.length * 5 + 3;
+        const pxPorMm = canvas.width / anchoUtil;
+        const altoMm = canvas.height / pxPorMm;
+        // Mantener entero un gráfico/tabla que sí cabe en una página nueva.
+        if (y + altoTitulo + Math.min(altoMm, pageHeight - 2 * MARGEN_MM - altoTitulo) > pageHeight - MARGEN_MM) {
           pdf.addPage();
           y = MARGEN_MM;
         }
+        pdf.text(tituloBloque, MARGEN_MM, y);
+        y += altoTitulo;
+        let offsetPx = 0;
+        while (offsetPx < canvas.height) {
+          const disponibleMm = pageHeight - MARGEN_MM - y;
+          const altoSlicePx = Math.min(Math.floor(disponibleMm * pxPorMm), canvas.height - offsetPx);
+          if (altoSlicePx <= 0) {
+            pdf.addPage();
+            y = MARGEN_MM;
+            continue;
+          }
+          const recorte = recortarCanvas(canvas, offsetPx, altoSlicePx);
+          const altoRecorteMm = altoSlicePx / pxPorMm;
+        pdf.addImage(recorte.toDataURL('image/png'), 'PNG', MARGEN_MM, y, anchoUtil, altoRecorteMm, undefined, 'FAST');
+          offsetPx += altoSlicePx;
+          y += altoRecorteMm;
+          if (offsetPx < canvas.height) {
+            pdf.addPage();
+            y = MARGEN_MM;
+          }
+        }
+        y += 8;
       }
-
-      y += 10; // Separación antes del siguiente bloque del mismo indicador.
     }
-
-    y += 10; // Separación antes del siguiente indicador.
   }
 
   pdf.save(`${title.replace(/\s+/g, '_')}.pdf`);
@@ -172,13 +177,17 @@ async function capturarElemento(
   element.style.maxHeight = 'none';
   element.style.height = 'auto';
   element.style.overflow = 'visible';
+  // Evita que el margen del último párrafo colapse fuera de la caja capturada.
+  element.style.paddingBottom = `${(parseFloat(getComputedStyle(element).paddingBottom) || 0) + 16}px`;
 
   try {
     return await html2canvas(element, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
-      ignoreElements: (el: Element) => el.classList.contains('no-export'),
+      ignoreElements: (el: Element) => el.classList.contains('no-export') || (
+        el.classList.contains('preview-module') && el !== element && !el.contains(element)
+      ),
     });
   } finally {
     element.style.cssText = estiloOriginal;

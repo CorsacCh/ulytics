@@ -10,9 +10,17 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { SIN_DATOS, type FilaAvanceCurricular } from '../data/curricular';
-import { formatearValorCurricular } from '../../../../shared/utils/formatters';
 
+import { formatearValorCurricular } from '../../../shared/utils/formatters';
+
+interface FilaAvanceCurricular {
+  cohorte: number;
+  porcentaje_bachillerato: number | null;
+  porcentaje_licenciatura_con_bachillerato_pendiente: number | null;
+  porcentaje_licenciatura: number | null;
+  porcentaje_titulo_con_bachillerato_licenciatura_pendiente: number | null;
+  porcentaje_titulo: number | null;
+}
 interface Props {
   data: FilaAvanceCurricular[];
   // En exportación (Reportería) el alto es fijo y la animación se apaga: html2canvas
@@ -73,7 +81,7 @@ export function AvanceCicloFormativo({
 
       {filas.length === 0 && (
         <div className="flex min-h-[300px] flex-1 items-center justify-center text-center">
-          <span className="text-sm font-medium text-slate-500">{SIN_DATOS}</span>
+          <span className="text-sm font-medium text-slate-500">Sin datos para la selección actual.</span>
         </div>
       )}
 

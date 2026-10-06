@@ -12,12 +12,17 @@ import {
   type FilaEficienciaCurricular,
 } from '../api';
 
-type LimitePeriodo = 'todos' | number;
+import { DataCardView } from '../../components/DataCardView';
+import { RangoPeriodos } from '../../components/RangoPeriodos';
+import { enRango, formatearDato, type RangoPeriodo } from '../../components/series';
+import { GraficoIndicadoresDecano } from './GraficoIndicadoresDecano';
+import { INDICADORES_EFICIENCIA, COLUMNAS_AVANCE } from '../indicadores';
+import { agruparAsignaturas, serieAsignatura, INDICADORES_ASIGNATURA, type AsignaturaAgrupada } from '../asignaturas';
 
 interface Indicador {
   titulo: string;
   llave: string;
-  tipo?: 'cantidad' | 'porcentaje';
+  tipo?: 'cantidad' | 'porcentaje' | 'decimal';
 }
 
 interface FilaPeriodo {
@@ -25,11 +30,7 @@ interface FilaPeriodo {
   valores: Record<string, number | null>;
 }
 
-interface FilaAsignaturaAgrupada {
-  codigo: string;
-  semestre: number | null;
-  valores: Record<number, number | null>;
-}
+type FilaAsignaturaAgrupada = AsignaturaAgrupada;
 
 interface TablaIndicadoresProps {
   titulo: string;
@@ -55,80 +56,13 @@ interface TablaAsignaturasProps {
 
 // Estos campos ya vienen como cantidades en el Excel y se muestran sin
 // convertirlos en porcentajes ni volver a calcular sus tramos.
-const INDICADORES_EFICIENCIA: Indicador[] = [
-  { titulo: 'Nº de alumnos regulares', llave: 'total_alumnos_regulares' },
-  { titulo: 'Baja (entre 0<60%)', llave: 'nivel_baja' },
-  { titulo: 'Media (entre 61 y <80%)', llave: 'nivel_media' },
-  { titulo: 'Alta (entre 80 <100%)', llave: 'nivel_alta' },
-  { titulo: 'Eficiente =100%', llave: 'nivel_eficiente' },
-];
 
 // Las cinco categorías vienen como porcentajes excluyentes informados en el Excel.
-const COLUMNAS_AVANCE: Indicador[] = [
-  { titulo: 'Bachillerato', llave: 'porcentaje_bachillerato', tipo: 'porcentaje' },
-  {
-    titulo: 'Licenciatura con asignaturas pendientes de Bachillerato',
-    llave: 'porcentaje_licenciatura_con_bachillerato_pendiente',
-    tipo: 'porcentaje',
-  },
-  { titulo: 'Licenciatura', llave: 'porcentaje_licenciatura', tipo: 'porcentaje' },
-  {
-    titulo: 'Título con pendientes de Bachillerato o Licenciatura',
-    llave: 'porcentaje_titulo_con_bachillerato_licenciatura_pendiente',
-    tipo: 'porcentaje',
-  },
-  { titulo: 'Título', llave: 'porcentaje_titulo', tipo: 'porcentaje' },
-];
 
-const formateadorCantidad = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 0,
-});
-
-const formateadorPorcentaje = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 0,
-});
-
-function obtenerAnios(anios: number[]) {
-  return [...new Set(anios)].sort((a, b) => a - b);
-}
-
-function formatearCantidad(valor: number | null) {
-  if (valor === null || valor === undefined) {
-    return <span className="text-slate-400">-</span>;
-  }
-
-  return formateadorCantidad.format(valor);
-}
-
-function formatearTasaInformada(valor: number | null) {
-  if (valor === null || valor === undefined) {
-    return <span className="text-slate-400">-</span>;
-  }
-
-  return `${formateadorPorcentaje.format(valor)}%`;
-}
-
-function formatearIndicador(valor: number | null, tipo: Indicador['tipo'] = 'cantidad') {
-  return tipo === 'porcentaje' ? formatearTasaInformada(valor) : formatearCantidad(valor);
-}
-
-function agruparAsignaturas(filas: FilaAsignaturaInformada[]) {
-  const agrupadas = new Map<string, FilaAsignaturaAgrupada>();
-
-  filas.forEach((filaOrigen) => {
-    const clave = `${filaOrigen.asig_codigo_base}-${filaOrigen.semestre ?? 'sin-semestre'}`;
-    const fila = agrupadas.get(clave) ?? {
-      codigo: filaOrigen.asig_codigo_base,
-      semestre: filaOrigen.semestre,
-      valores: {},
-    };
-
-    fila.valores[filaOrigen.anio_medicion] = filaOrigen.tasa_reprobacion;
-    agrupadas.set(clave, fila);
-  });
-
-  return [...agrupadas.values()];
-}
+function obtenerAnios(anios: number[]) { return [...new Set(anios)].sort((a, b) => a - b); }
+const formatearCantidad = (valor: number | null) => formatearDato(valor);
+const formatearTasaInformada = (valor: number | null) => formatearDato(valor, 'porcentaje');
+const formatearIndicador = (valor: number | null, tipo: Indicador['tipo'] = 'cantidad') => formatearDato(valor, tipo);
 
 function TablaIndicadores({
   titulo,
@@ -139,13 +73,9 @@ function TablaIndicadores({
 }: TablaIndicadoresProps) {
   const anios = obtenerAnios(filas.map((fila) => fila.periodo));
 
-  return (
-    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="text-lg font-bold text-slate-800">{titulo}</h3>
-        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
-      </div>
-
+  return <DataCardView title={titulo} description={descripcion}
+    chartComponent={<GraficoIndicadoresDecano filas={filas} indicadores={indicadores} tipo="eficiencia" />}
+    tableComponent={<>
       {anios.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
       ) : (
@@ -184,8 +114,7 @@ function TablaIndicadores({
           </table>
         </div>
       )}
-    </section>
-  );
+    </>} />;
 }
 
 function TablaAvance({
@@ -197,13 +126,9 @@ function TablaAvance({
 }: TablaAvanceProps) {
   const anios = obtenerAnios(filas.map((fila) => fila.periodo));
 
-  return (
-    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="text-lg font-bold text-slate-800">{titulo}</h3>
-        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
-      </div>
-
+  return <DataCardView title={titulo} description={descripcion}
+    chartComponent={<GraficoIndicadoresDecano filas={filas} indicadores={columnas} tipo="avance" />}
+    tableComponent={<>
       {anios.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
       ) : (
@@ -243,21 +168,24 @@ function TablaAvance({
           </table>
         </div>
       )}
-    </section>
-  );
+    </>} />;
 }
 
 function TablaAsignaturas({ filas, anios, mensajeVacio }: TablaAsignaturasProps) {
-  return (
-    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="text-lg font-bold text-slate-800">Asignaturas informadas en la carga</h3>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Código, semestre y tasa de reprobación consignados en el Excel, sin aplicar una
-          clasificación adicional.
-        </p>
-      </div>
-
+  const [seleccion, setSeleccion] = useState('todas');
+  const seleccionada = filas.find((fila) => fila.clave === seleccion);
+  const visibles = seleccionada ? [seleccionada] : filas;
+  return <section className="space-y-3">
+    <label className="block text-sm font-semibold text-slate-700">Asignatura y semestre
+      <select className="ml-3 max-w-full rounded border border-slate-300 p-2" value={seleccionada ? seleccion : 'todas'} onChange={(event) => setSeleccion(event.target.value)}>
+        <option value="todas">Todas las asignaturas (tabla)</option>
+        {filas.map((fila) => <option key={fila.clave} value={fila.clave}>{fila.codigo} · semestre {fila.semestre ?? 'sin datos'}</option>)}
+      </select>
+    </label>
+    <DataCardView title="Asignaturas informadas en la carga" defaultView="table"
+      description="Código completo, semestre y tasa del Excel. Selecciona una asignatura para ver su evolución; no se reclasifica como crítica."
+      chartComponent={seleccionada ? <GraficoIndicadoresDecano filas={serieAsignatura(seleccionada, anios)} indicadores={INDICADORES_ASIGNATURA} eje="Año de medición" /> : <p className="py-8 text-sm text-slate-500">Selecciona una asignatura y semestre para visualizar el gráfico.</p>}
+      tableComponent={<>
       {filas.length === 0 || anios.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
       ) : (
@@ -266,7 +194,7 @@ function TablaAsignaturas({ filas, anios, mensajeVacio }: TablaAsignaturasProps)
             <thead>
               <tr className="bg-[#FFF9E6]">
                 <th className="border-b border-slate-200 px-6 py-3 font-semibold text-slate-700">
-                  Código de asignatura
+                  Código completo de asignatura
                 </th>
                 <th className="border-b border-slate-200 px-6 py-3 text-center font-semibold text-slate-700">
                   Semestre
@@ -282,7 +210,7 @@ function TablaAsignaturas({ filas, anios, mensajeVacio }: TablaAsignaturasProps)
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600">
-              {filas.map((fila) => (
+              {visibles.map((fila) => (
                 <tr
                   key={`${fila.codigo}-${fila.semestre ?? 'sin-semestre'}`}
                   className="hover:bg-slate-50/60"
@@ -302,8 +230,8 @@ function TablaAsignaturas({ filas, anios, mensajeVacio }: TablaAsignaturasProps)
           </table>
         </div>
       )}
-    </section>
-  );
+      </>} />
+  </section>;
 }
 
 function describirError(error: unknown, contexto: 'catalogo' | 'datos') {
@@ -331,8 +259,8 @@ export function ProgresionCurricularDecano() {
   const [eficiencia, setEficiencia] = useState<FilaEficienciaCurricular[]>([]);
   const [avance, setAvance] = useState<FilaAvanceCurricular[]>([]);
   const [asignaturas, setAsignaturas] = useState<FilaAsignaturaInformada[]>([]);
-  const [periodoDesde, setPeriodoDesde] = useState<LimitePeriodo>('todos');
-  const [periodoHasta, setPeriodoHasta] = useState<LimitePeriodo>('todos');
+  const [rangoCohorte, setRangoCohorte] = useState<RangoPeriodo>(['todos', 'todos']);
+  const [rangoAnio, setRangoAnio] = useState<RangoPeriodo>(['todos', 'todos']);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
@@ -384,8 +312,8 @@ export function ProgresionCurricularDecano() {
       try {
         setCargandoDatos(true);
         setErrorDatos(null);
-        setPeriodoDesde('todos');
-        setPeriodoHasta('todos');
+        setRangoCohorte(['todos', 'todos']);
+        setRangoAnio(['todos', 'todos']);
 
         const respuesta = await obtenerCurricularCarrera(codigoCarrera);
         if (!activo) return;
@@ -432,50 +360,13 @@ export function ProgresionCurricularDecano() {
     },
   })), [avance]);
 
-  const periodosDisponibles = useMemo(() => obtenerAnios([
-    ...eficiencia.map((fila) => fila.cohorte),
-    ...avance.map((fila) => fila.cohorte),
-    ...asignaturas.map((fila) => fila.anio_medicion),
-  ]), [eficiencia, avance, asignaturas]);
-
-  const estaEnRango = (periodo: number) => (
-    (periodoDesde === 'todos' || periodo >= periodoDesde)
-    && (periodoHasta === 'todos' || periodo <= periodoHasta)
-  );
-
-  const eficienciaFiltrada = filasEficiencia.filter((fila) => estaEnRango(fila.periodo));
-  const avanceFiltrado = filasAvance.filter((fila) => estaEnRango(fila.periodo));
-  const asignaturasFiltradas = asignaturas.filter((fila) => estaEnRango(fila.anio_medicion));
+  const cohortesDisponibles = obtenerAnios([...eficiencia.map((fila) => fila.cohorte), ...avance.map((fila) => fila.cohorte)]);
+  const aniosDisponibles = obtenerAnios(asignaturas.map((fila) => fila.anio_medicion));
+  const eficienciaFiltrada = filasEficiencia.filter((fila) => enRango(fila.periodo, rangoCohorte));
+  const avanceFiltrado = filasAvance.filter((fila) => enRango(fila.periodo, rangoCohorte));
+  const asignaturasFiltradas = asignaturas.filter((fila) => enRango(fila.anio_medicion, rangoAnio));
   const filasAsignaturas = agruparAsignaturas(asignaturasFiltradas);
-  const aniosAsignaturas = obtenerAnios(
-    asignaturasFiltradas.map((fila) => fila.anio_medicion),
-  );
-
-  const cambiarPeriodoDesde = (valor: string) => {
-    const nuevoDesde = valor === 'todos' ? 'todos' : Number(valor);
-    setPeriodoDesde(nuevoDesde);
-
-    if (
-      nuevoDesde !== 'todos'
-      && periodoHasta !== 'todos'
-      && nuevoDesde > periodoHasta
-    ) {
-      setPeriodoHasta(nuevoDesde);
-    }
-  };
-
-  const cambiarPeriodoHasta = (valor: string) => {
-    const nuevoHasta = valor === 'todos' ? 'todos' : Number(valor);
-    setPeriodoHasta(nuevoHasta);
-
-    if (
-      nuevoHasta !== 'todos'
-      && periodoDesde !== 'todos'
-      && nuevoHasta < periodoDesde
-    ) {
-      setPeriodoDesde(nuevoHasta);
-    }
-  };
+  const aniosAsignaturas = obtenerAnios(asignaturasFiltradas.map((fila) => fila.anio_medicion));
 
   const carreraSeleccionada = carreras.find((carrera) => carrera.car_codigo === codigoCarrera);
   const sinCarreras = !cargandoCatalogo && !errorCatalogo && carreras.length === 0;
@@ -493,7 +384,7 @@ export function ProgresionCurricularDecano() {
           la facultad.
         </p>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(280px,1fr)_180px_180px]">
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <label className="text-sm font-semibold text-slate-700">
             Carrera
             <select
@@ -512,36 +403,10 @@ export function ProgresionCurricularDecano() {
             </select>
           </label>
 
-          <label className="text-sm font-semibold text-slate-700">
-            Desde
-            <select
-              value={periodoDesde}
-              onChange={(event) => cambiarPeriodoDesde(event.target.value)}
-              disabled={cargandoDatos || periodosDisponibles.length === 0}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="todos">Primer período</option>
-              {periodosDisponibles.map((anio) => (
-                <option key={anio} value={anio}>{anio}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            Hasta
-            <select
-              value={periodoHasta}
-              onChange={(event) => cambiarPeriodoHasta(event.target.value)}
-              disabled={cargandoDatos || periodosDisponibles.length === 0}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="todos">Último período</option>
-              {periodosDisponibles.map((anio) => (
-                <option key={anio} value={anio}>{anio}</option>
-              ))}
-            </select>
-          </label>
+          <RangoPeriodos etiqueta="Cohorte" opciones={cohortesDisponibles} valor={rangoCohorte} onChange={setRangoCohorte} disabled={cargandoDatos} />
+          <RangoPeriodos etiqueta="Año de medición" opciones={aniosDisponibles} valor={rangoAnio} onChange={setRangoAnio} disabled={cargandoDatos} />
         </div>
+        <p className="mt-3 text-xs text-slate-500">Cohorte filtra eficiencia y avance. Año de medición filtra asignaturas; son independientes.</p>
       </header>
 
       {errorCatalogo && (
@@ -602,6 +467,7 @@ export function ProgresionCurricularDecano() {
               />
 
               <TablaAsignaturas
+                key={codigoCarrera}
                 filas={filasAsignaturas}
                 anios={aniosAsignaturas}
                 mensajeVacio="No hay asignaturas informadas para el período seleccionado."

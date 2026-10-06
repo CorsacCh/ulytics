@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
+import { prepararModulosPDF, type ModuloPresentable, type SeccionPDF, type VistaPDF } from './reportPresentation';
 import { apiRequest } from '../../auth/api';
 import {
   exportSelectedToPDF,
@@ -18,6 +20,7 @@ export interface ModuloReporteria extends ExportModule {
   // Distintivo visual en el selector: separa el bloque gráfico (solo PDF)
   // del tabular (PDF + Excel) sin recargar el nombre del módulo.
   tipoVista?: 'Gráfico' | 'Tabla' | 'Mixto';
+  seccionesPdf?: SeccionPDF[];
 }
 
 interface ReporteriaViewProps {
@@ -57,6 +60,8 @@ export function ReporteriaView({
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
   const [exportando, setExportando] = useState<FormatoExportable | null>(null);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
+  const [vistasPdf, setVistasPdf] = useState<Record<string, VistaPDF>>({});
+  const [capturas, setCapturas] = useState<ModuloPresentable[]>([]);
 
   const cantidadSeleccionadosDisponibles = modulos.filter((modulo) =>
     seleccionados.includes(modulo.id),
@@ -74,7 +79,7 @@ export function ReporteriaView({
   const alternarTodos = () => {
     setSeleccionados(todosSeleccionados ? [] : modulos.map((modulo) => modulo.id));
   };
-const registrarDescarga = async (formato: string, tamanoKb: number) => {
+  const registrarDescarga = async (formato: string, tamanoKb: number) => {
     try {
       await apiRequest('/api/descargas', {
         method: 'POST',
@@ -95,6 +100,7 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
   };
 
   const manejarExportar = async (formato: FormatoExportable) => {
+    if (exportando || loading || error) return;
     if (seleccionados.length === 0) {
       setMensajeError('Selecciona al menos un indicador para exportar.');
       return;
@@ -114,9 +120,13 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
     setMensajeError(null);
 
     try {
+      const modulosPdf = prepararModulosPDF(activos, vistasPdf);
+      // Monta una instantánea de los datos seleccionados antes de medir los SVG.
+      // No se renderizan cientos de gráficos ocultos al entrar a reportería.
+      if (formato === 'pdf') flushSync(() => setCapturas(modulosPdf));
       const tamanoKb =
         formato === 'pdf'
-          ? await exportSelectedToPDF(activos, reportTitle, activeFilters)
+          ? await exportSelectedToPDF(modulosPdf, reportTitle, activeFilters)
           : await exportSelectedToExcel(activos, reportTitle);
 
       await registrarDescarga(formato.toUpperCase(), tamanoKb);
@@ -126,6 +136,7 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
       setMensajeError(`No se pudo generar el archivo ${formato.toUpperCase()}.`);
     } finally {
       setExportando(null);
+      setCapturas([]);
     }
   };
   const botonesDeshabilitados =
@@ -140,7 +151,7 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
       </header>
 
       {/* ZONA 1: configuración del reporte */}
-      <section className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+      <fieldset disabled={exportando !== null} className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
         {configuracion && (
           <div className="mb-8 border-b border-slate-200 pb-8">{configuracion}</div>
         )}
@@ -183,18 +194,29 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
                   {modulos
                     .filter((modulo) => modulo.categoria === categoria)
                     .map((modulo) => (
-                      <label
+                      <div
                         key={modulo.id}
-                        className="-ml-2 flex cursor-pointer items-center justify-between gap-3 rounded p-2 transition-colors hover:bg-slate-50"
+                        className="-ml-2 flex flex-wrap items-center justify-between gap-3 rounded p-2 transition-colors hover:bg-slate-50"
                       >
-                        <div className="flex items-center gap-3">
+                        <label className="flex cursor-pointer items-center gap-3">
                           <input
                             type="checkbox"
                             checked={seleccionados.includes(modulo.id)}
                             onChange={() => alternar(modulo.id)}
                           />
                           <span className="font-medium text-slate-700">{modulo.label}</span>
-                        </div>
+                        </label>
+                        {modulo.seccionesPdf && (
+                          <select aria-label={`Presentación PDF de ${modulo.label}`}
+                            disabled={!seleccionados.includes(modulo.id)}
+                            value={vistasPdf[modulo.id] ?? 'tabla'}
+                            onChange={(event) => setVistasPdf((actual) => ({ ...actual, [modulo.id]: event.target.value as VistaPDF }))}
+                            className="rounded border border-slate-300 bg-white p-2 text-sm disabled:opacity-50">
+                            <option value="tabla">Tabla</option>
+                            <option value="grafico">Gráfico</option>
+                            <option value="ambos">Ambos</option>
+                          </select>
+                        )}
                         {/* BADGE UX: identifica de un vistazo el tipo de vista */}
                         {modulo.tipoVista && (
                           <span
@@ -207,7 +229,7 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
                             {modulo.tipoVista}
                           </span>
                         )}
-                      </label>
+                      </div>
                     ))}
                 </div>
               </div>
@@ -239,10 +261,10 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
             </button>
           )}
         </div>
-      </section>
+      </fieldset>
 
       {/*
-        ZONA OCULTA: motor de render para html2canvas.
+        ZONA OCULTA: instantánea de los módulos seleccionados, solo durante la exportación.
 
         Sin `opacity`, `display:none` ni `pointer-events-none`: Recharts mide su
         contenedor con ResizeObserver, y si el ancestro está colapsado o
@@ -252,9 +274,9 @@ const registrarDescarga = async (formato: string, tamanoKb: number) => {
         de los gráficos necesita dimensiones reales para renderizar.
       */}
       <div aria-hidden="true" className="absolute left-[-10000px] top-0 z-[-1] w-[1000px]">
-        {modulos.map((modulo) => (
+        {capturas.map((modulo) => (
           <div key={modulo.id} id={modulo.id} className="preview-module">
-            <div style={{ width: '100%', minHeight: '450px' }}>{modulo.render()}</div>
+            <div style={{ width: '100%' }}>{modulo.render()}</div>
           </div>
         ))}
       </div>

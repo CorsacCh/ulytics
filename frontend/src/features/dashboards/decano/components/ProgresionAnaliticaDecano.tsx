@@ -13,7 +13,11 @@ import {
   type FilaProgresion,
 } from '../api';
 
-type LimitePeriodo = 'todos' | number;
+import { DataCardView } from '../../components/DataCardView';
+import { RangoPeriodos } from '../../components/RangoPeriodos';
+import { enRango, formatearDato, type RangoPeriodo } from '../../components/series';
+import { GraficoIndicadoresDecano } from './GraficoIndicadoresDecano';
+import { INDICADORES_MATRICULA, INDICADORES_INGRESOS, INDICADORES_RETENCION, INDICADORES_TITULACION } from '../indicadores';
 type TipoValor = 'cantidad' | 'porcentaje' | 'decimal';
 
 interface Indicador {
@@ -33,57 +37,16 @@ interface TablaPeriodosProps {
   indicadores: Indicador[];
   filas: FilaPeriodo[];
   mensajeVacio: string;
+  eje?: string;
 }
 
-const INDICADORES_MATRICULA: Indicador[] = [
-  { titulo: 'Matrícula total', llave: 'matricula_total' },
-  { titulo: 'Matrícula de mujeres', llave: 'matricula_mujeres' },
-  { titulo: '% Mujeres sobre matrícula total', llave: 'porcentaje_mujeres', tipo: 'porcentaje' },
-];
 
 // Son cantidades entregadas por el Excel. No se interpretan como tasas ni se
 // dividen por vacantes, porque ese denominador no está disponible actualmente.
-const INDICADORES_INGRESOS: Indicador[] = [
-  { titulo: 'Ingresos SUA', llave: 'ingresos_sua' },
-  { titulo: 'Ingresos PACE', llave: 'ingresos_pace' },
-  { titulo: 'Ingresos especiales (RAE)', llave: 'ingresos_especiales' },
-  { titulo: 'Ingresos totales', llave: 'ingresos_totales' },
-];
 
-const INDICADORES_RETENCION: Indicador[] = [
-  { titulo: 'Retención de 1er año', llave: 'retencion_a1', tipo: 'porcentaje' },
-  { titulo: 'Retención de 2do año', llave: 'retencion_a2', tipo: 'porcentaje' },
-  { titulo: 'Retención de 3er año', llave: 'retencion_a3', tipo: 'porcentaje' },
-  { titulo: 'Retención de 4to año', llave: 'retencion_a4', tipo: 'porcentaje' },
-  { titulo: 'Retención total', llave: 'retencion_total', tipo: 'porcentaje' },
-];
 
-const INDICADORES_TITULACION: Indicador[] = [
-  { titulo: 'Tasa de titulación total (TTT)', llave: 'tasa_titulacion_total', tipo: 'porcentaje' },
-  { titulo: 'Tasa de titulación oportuna (TTO)', llave: 'tasa_titulacion_oportuna', tipo: 'porcentaje' },
-  { titulo: 'Tasa de titulación efectiva (TTE)', llave: 'tasa_titulacion_efectiva', tipo: 'porcentaje' },
-  { titulo: 'Duración real (semestres)', llave: 'duracion_real_semestres', tipo: 'decimal' },
-];
 
-const formateadorCantidad = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 0,
-});
-const formateadorPorcentaje = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 0,
-});
-const formateadorDuracion = new Intl.NumberFormat('es-CL', {
-  maximumFractionDigits: 1,
-});
-
-function formatearValor(valor: number | null, tipo: TipoValor = 'cantidad') {
-  if (valor === null || valor === undefined) {
-    return <span className="text-slate-400">-</span>;
-  }
-
-  if (tipo === 'porcentaje') return `${formateadorPorcentaje.format(valor)}%`;
-  if (tipo === 'decimal') return formateadorDuracion.format(valor);
-  return formateadorCantidad.format(valor);
-}
+const formatearValor = formatearDato;
 
 function obtenerPeriodos(filas: FilaPeriodo[]) {
   return [...new Set(filas.map((fila) => fila.periodo))].sort((a, b) => a - b);
@@ -95,16 +58,13 @@ function TablaPeriodos({
   indicadores,
   filas,
   mensajeVacio,
+  eje = 'Cohorte',
 }: TablaPeriodosProps) {
   const periodos = obtenerPeriodos(filas);
 
-  return (
-    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-6 py-4">
-        <h3 className="text-lg font-bold text-slate-800">{titulo}</h3>
-        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
-      </div>
-
+  return <DataCardView title={titulo} description={`${descripcion} · ${eje}`}
+    chartComponent={<GraficoIndicadoresDecano filas={filas} indicadores={indicadores} eje={eje} />}
+    tableComponent={<>
       {periodos.length === 0 ? (
         <div className="px-6 py-8 text-sm text-slate-500">{mensajeVacio}</div>
       ) : (
@@ -145,8 +105,7 @@ function TablaPeriodos({
           </table>
         </div>
       )}
-    </section>
-  );
+    </>} />;
 }
 
 function describirError(error: unknown, contexto: 'catalogo' | 'datos') {
@@ -174,8 +133,8 @@ export function ProgresionAnaliticaDecano() {
   const [ingresos, setIngresos] = useState<FilaIngreso[]>([]);
   const [matricula, setMatricula] = useState<FilaMatricula[]>([]);
   const [progresion, setProgresion] = useState<FilaProgresion[]>([]);
-  const [periodoDesde, setPeriodoDesde] = useState<LimitePeriodo>('todos');
-  const [periodoHasta, setPeriodoHasta] = useState<LimitePeriodo>('todos');
+  const [rangoCohorte, setRangoCohorte] = useState<RangoPeriodo>(['todos', 'todos']);
+  const [rangoAnio, setRangoAnio] = useState<RangoPeriodo>(['todos', 'todos']);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
@@ -227,8 +186,8 @@ export function ProgresionAnaliticaDecano() {
       try {
         setCargandoDatos(true);
         setErrorDatos(null);
-        setPeriodoDesde('todos');
-        setPeriodoHasta('todos');
+        setRangoCohorte(['todos', 'todos']);
+        setRangoAnio(['todos', 'todos']);
 
         const [respuestaMatricula, respuestaProgresion] = await Promise.all([
           obtenerMatriculaCarrera(codigoCarrera),
@@ -290,44 +249,9 @@ export function ProgresionAnaliticaDecano() {
     },
   })), [progresion]);
 
-  const periodosDisponibles = useMemo(() => [
-    ...new Set([
-      ...filasMatricula.map((fila) => fila.periodo),
-      ...filasIngreso.map((fila) => fila.periodo),
-      ...filasProgresion.map((fila) => fila.periodo),
-    ]),
-  ].sort((a, b) => a - b), [filasIngreso, filasMatricula, filasProgresion]);
-
-  const filtrarPeriodo = (filas: FilaPeriodo[]) => filas.filter((fila) => (
-    (periodoDesde === 'todos' || fila.periodo >= periodoDesde)
-    && (periodoHasta === 'todos' || fila.periodo <= periodoHasta)
-  ));
-
-  const cambiarPeriodoDesde = (valor: string) => {
-    const nuevoDesde = valor === 'todos' ? 'todos' : Number(valor);
-    setPeriodoDesde(nuevoDesde);
-
-    if (
-      nuevoDesde !== 'todos'
-      && periodoHasta !== 'todos'
-      && nuevoDesde > periodoHasta
-    ) {
-      setPeriodoHasta(nuevoDesde);
-    }
-  };
-
-  const cambiarPeriodoHasta = (valor: string) => {
-    const nuevoHasta = valor === 'todos' ? 'todos' : Number(valor);
-    setPeriodoHasta(nuevoHasta);
-
-    if (
-      nuevoHasta !== 'todos'
-      && periodoDesde !== 'todos'
-      && nuevoHasta < periodoDesde
-    ) {
-      setPeriodoDesde(nuevoHasta);
-    }
-  };
+  const cohortesDisponibles = obtenerPeriodos([...filasIngreso, ...filasProgresion]);
+  const aniosDisponibles = obtenerPeriodos(filasMatricula);
+  const filtrarCohorte = (filas: FilaPeriodo[]) => filas.filter((fila) => enRango(fila.periodo, rangoCohorte));
 
   const sinCarreras = !cargandoCatalogo && !errorCatalogo && carreras.length === 0;
 
@@ -343,7 +267,7 @@ export function ProgresionAnaliticaDecano() {
           Matrícula, vías de ingreso, retención y titulación de las carreras pertenecientes a la facultad.
         </p>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(280px,1fr)_180px_180px]">
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <label className="text-sm font-semibold text-slate-700">
             Carrera
             <select
@@ -362,36 +286,10 @@ export function ProgresionAnaliticaDecano() {
             </select>
           </label>
 
-          <label className="text-sm font-semibold text-slate-700">
-            Desde
-            <select
-              value={periodoDesde}
-              onChange={(event) => cambiarPeriodoDesde(event.target.value)}
-              disabled={cargandoDatos || periodosDisponibles.length === 0}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="todos">Primer período</option>
-              {periodosDisponibles.map((anio) => (
-                <option key={anio} value={anio}>{anio}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            Hasta
-            <select
-              value={periodoHasta}
-              onChange={(event) => cambiarPeriodoHasta(event.target.value)}
-              disabled={cargandoDatos || periodosDisponibles.length === 0}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-[#0A192F] outline-none focus:border-[#FFB800] focus:ring-2 focus:ring-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="todos">Último período</option>
-              {periodosDisponibles.map((anio) => (
-                <option key={anio} value={anio}>{anio}</option>
-              ))}
-            </select>
-          </label>
+          <RangoPeriodos etiqueta="Cohorte" opciones={cohortesDisponibles} valor={rangoCohorte} onChange={setRangoCohorte} disabled={cargandoDatos} />
+          <RangoPeriodos etiqueta="Año de medición" opciones={aniosDisponibles} valor={rangoAnio} onChange={setRangoAnio} disabled={cargandoDatos} />
         </div>
+        <p className="mt-3 text-xs text-slate-500">Cohorte filtra ingresos, retención y titulación. Año de medición filtra matrícula; son independientes.</p>
       </header>
 
       {errorCatalogo && (
@@ -439,7 +337,8 @@ export function ProgresionAnaliticaDecano() {
                 titulo="Matrícula por período"
                 descripcion="Cantidad total de estudiantes y participación de mujeres sobre la matrícula total."
                 indicadores={INDICADORES_MATRICULA}
-                filas={filtrarPeriodo(filasMatricula)}
+                eje="Año de medición"
+                filas={filasMatricula.filter((fila) => enRango(fila.periodo, rangoAnio))}
                 mensajeVacio="No hay datos de matrícula para el período seleccionado."
               />
 
@@ -447,15 +346,15 @@ export function ProgresionAnaliticaDecano() {
                 titulo="Ingresos por vía de admisión"
                 descripcion="Cantidades informadas por SUA, PACE, ingreso especial RAE e ingresos totales; no corresponden a tasas de ocupación."
                 indicadores={INDICADORES_INGRESOS}
-                filas={filtrarPeriodo(filasIngreso)}
+                filas={filtrarCohorte(filasIngreso)}
                 mensajeVacio="No hay cantidades de ingreso para el período seleccionado."
               />
 
               <TablaPeriodos
                 titulo="Retención por cohorte"
-                descripcion="Tasas informadas para cada cohorte; los valores faltantes se muestran con un guion."
+                descripcion="Tasas informadas para cada cohorte; los valores faltantes se muestran como Sin datos."
                 indicadores={INDICADORES_RETENCION}
-                filas={filtrarPeriodo(filasProgresion)}
+                filas={filtrarCohorte(filasProgresion)}
                 mensajeVacio="No hay datos de retención para la cohorte seleccionada."
               />
 
@@ -463,7 +362,7 @@ export function ProgresionAnaliticaDecano() {
                 titulo="Titulación y duración real"
                 descripcion="Valores TTT, TTO, TTE y duración real proporcionados en la carga académica."
                 indicadores={INDICADORES_TITULACION}
-                filas={filtrarPeriodo(filasProgresion)}
+                filas={filtrarCohorte(filasProgresion)}
                 mensajeVacio="No hay datos de titulación para la cohorte seleccionada."
               />
             </>

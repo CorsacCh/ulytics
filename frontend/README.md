@@ -102,3 +102,49 @@ asignaturas el año. Probar “Todas las carreras” y una carrera específica,
 incluyendo períodos sin información, y el desplazamiento de tablas en pantallas
 pequeñas. La revisión visual autenticada queda pendiente con una cuenta del
 usuario; las pruebas de renderizado no equivalen a esa comprobación.
+
+## Decanatura: gráficos, tablas y PDF
+
+Las vistas de progresión analítica y curricular permiten alternar **Gráfico / Tabla**
+por apartado. Reutilizan `DataCardView` y los gráficos `EficienciaCurricular` y
+`AvanceCicloFormativo`, ahora en `src/features/dashboards/components/`, también
+consumidos por el director. No hay nuevas dependencias, consultas ni migraciones.
+
+- Cohorte filtra ingresos, retención, titulación, eficiencia y avance. Año de
+  medición filtra matrícula y asignaturas. Los rangos son independientes e inclusivos.
+- Matrícula y titulación separan las unidades en gráficos distintos. Eficiencia
+  muestra los tramos en barras y el total informado aparte, sin sumarlo de nuevo.
+- Asignaturas conserva código completo y semestre. La tabla puede mostrar todas;
+  para el gráfico se selecciona una asignatura. No se fusionan versiones ni se
+  reclasifican asignaturas como críticas.
+- Cero no equivale a ausencia. Las líneas dejan huecos en años sin datos y muestran
+  puntos cuando hay un solo período. Las barras parciales incluyen una advertencia.
+- Reportería permite **Tabla / Gráfico / Ambos** por indicador. El PDF separa
+  carreras y asignaturas, no calcula promedios de facultad, y conserva los filtros.
+  En asignaturas incluye todos los códigos del alcance seleccionado, uno por gráfico.
+- Los controles quedan bloqueados durante la generación y se captura una instantánea
+  de los módulos seleccionados. Las tablas se dividen en bloques con encabezados
+  repetidos; se comprimen las imágenes y se evita capturar los módulos ajenos a cada bloque.
+
+Validación desde la raíz (no requiere PostgreSQL):
+
+```sh
+node --test --test-concurrency=1 frontend/test/decanatura-graficos.test.mjs frontend/test/home-curricular.test.mjs
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+El banco visual `frontend/test/decanatura-preview.html` usa exclusivamente datos
+ficticios y simula todas las peticiones de la API, incluso el registro de descargas.
+No se importa desde `src/` ni se incluye en el build de producción. Para abrirlo:
+
+```sh
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 3014 --strictPort
+```
+
+Visitar `http://127.0.0.1:3014/test/decanatura-preview.html`. Probar alternancia,
+rangos independientes, una cohorte, ceros/null, carrera vacía, códigos de asignaturas
+distintos y PDF en las tres modalidades. El PDF de prueba completo para dos carreras
+con datos produjo 12 páginas y aproximadamente 1,5 MB; el tamaño depende del alcance.
+Esta prueba aislada no reemplaza la revisión con sesión real, permisos y datos cargados.

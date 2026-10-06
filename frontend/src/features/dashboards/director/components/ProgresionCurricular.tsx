@@ -10,8 +10,8 @@ import {
 } from '../data/curricular';
 import type { FilaPeriodo } from '../data/indicadoresProgresion';
 import { DataCardView } from '../../components/DataCardView';
-import { AvanceCicloFormativo } from './AvanceCicloFormativo';
-import { EficienciaCurricular } from './EficienciaCurricular';
+import { AvanceCicloFormativo } from '../../components/AvanceCicloFormativo';
+import { EficienciaCurricular } from '../../components/EficienciaCurricular';
 import {
   TablaAvance,
   TablaAsignaturasCriticas,

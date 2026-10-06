@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../../../auth/api';
 import { ReporteriaView, type ModuloReporteria } from '../../components/ReporteriaView';
+import { GraficoIndicadoresDecano } from './GraficoIndicadoresDecano';
+import { INDICADORES_INGRESOS, INDICADORES_MATRICULA, INDICADORES_RETENCION, INDICADORES_TITULACION, INDICADORES_EFICIENCIA, COLUMNAS_AVANCE, seriesDesdeTabla } from '../indicadores';
+import { agruparAsignaturas, serieAsignatura, INDICADORES_ASIGNATURA } from '../asignaturas';
+import type { IndicadorSerie } from '../../components/series';
 import type { FilaExportable } from '../../../../utils/exportUtils';
 import type { CarreraDecanatura } from '../api';
 import {
@@ -24,7 +28,7 @@ function obtenerPeriodos(periodos: number[]): number[] {
 }
 
 function formatearValor(valor: unknown, porcentaje = false): string {
-  if (valor === null || valor === undefined || valor === '') return '—';
+  if (valor === null || valor === undefined || valor === '') return 'Sin datos';
   if (typeof valor !== 'number') return String(valor);
 
   const texto = valor.toLocaleString('es-CL', { maximumFractionDigits: 2 });
@@ -71,7 +75,9 @@ function TablaReporte({
                 <tr key={indice} className="break-inside-avoid">
                   {columnas.map((columna) => (
                     <td key={columna.llave} className="px-2 py-2 text-slate-700">
-                      {formatearValor(fila[columna.llave], columna.porcentaje)}
+                      {columna.llave === 'Cohorte' || columna.llave === 'Año de medición'
+                        ? String(fila[columna.llave])
+                        : formatearValor(fila[columna.llave], columna.porcentaje)}
                     </td>
                   ))}
                 </tr>
@@ -85,27 +91,46 @@ function TablaReporte({
 }
 
 function crearModuloTabla(
-  id: string,
-  label: string,
-  categoria: string,
-  descripcion: string,
-  columnas: ColumnaTabla[],
-  data: FilaExportable[],
+  id: string, label: string, categoria: string, descripcion: string,
+  columnas: ColumnaTabla[], data: FilaExportable[], indicadores: IndicadorSerie[],
+  tipo: 'lineas' | 'eficiencia' | 'avance' | 'asignaturas' = 'lineas',
 ): ModuloReporteria {
+  const grupos = [...new Set(data.map((fila) => String(fila['Código carrera'])))];
   return {
-    id,
-    label,
-    categoria,
-    data,
-    formats: ['pdf'],
-    render: (): ReactNode => (
-      <TablaReporte
-        titulo={label}
-        descripcion={descripcion}
-        columnas={columnas}
-        filas={data}
-      />
-    ),
+    id, label, categoria, data, formats: ['pdf'],
+    render: () => <TablaReporte titulo={label} descripcion={descripcion} columnas={columnas} filas={data} />,
+    seccionesPdf: grupos.length === 0 ? [{
+      id: `${id}-sin-datos`, label: 'Sin datos',
+      tabla: () => <TablaReporte titulo={label} descripcion={descripcion} columnas={columnas} filas={[]} />,
+      grafico: () => <p className="p-6">No existen datos para el alcance y tramo seleccionados.</p>,
+    }] : grupos.map((codigo) => {
+      const filas = data.filter((fila) => fila['Código carrera'] === codigo);
+      const carrera = `${filas[0].Carrera} · ${codigo} · ${filas[0].Sede}`;
+      const periodo = columnas[3].llave;
+      const series = tipo === 'asignaturas' ? [] : seriesDesdeTabla(filas, columnas.slice(3).map(({ llave }) => llave), indicadores);
+      return {
+        id: `${id}-${encodeURIComponent(codigo)}`, label: carrera,
+        tabla: () => <div>{Array.from({ length: Math.ceil(filas.length / 12) }, (_, indice) => (
+          <div key={indice} data-pdf-block="true">
+            <TablaReporte titulo={`${label} · ${carrera}`} descripcion={descripcion} columnas={columnas} filas={filas.slice(indice * 12, (indice + 1) * 12)} />
+          </div>
+        ))}</div>,
+        grafico: () => tipo === 'asignaturas' ? <div>{
+          agruparAsignaturas(filas.map((fila) => ({
+            asig_codigo: String(fila['Código completo']), asig_codigo_base: String(fila['Código base']),
+            semestre: fila.Semestre as number | null, anio_medicion: Number(fila['Año de medición']),
+            tasa_reprobacion: fila['Tasa de reprobación (%)'] as number | null, estado_dato: null,
+          }))).map((asignatura) => (
+            <div key={asignatura.clave} className="mb-6" data-pdf-block="true">
+              <h3 className="mb-3 font-semibold">{asignatura.codigo} · semestre {asignatura.semestre ?? 'sin datos'}</h3>
+              <GraficoIndicadoresDecano filas={serieAsignatura(asignatura, obtenerPeriodos(filas.map((fila) => Number(fila['Año de medición']))))}
+                indicadores={INDICADORES_ASIGNATURA} eje="Año de medición" exportacion />
+            </div>
+          ))
+        }</div> : <GraficoIndicadoresDecano filas={series} indicadores={indicadores} tipo={tipo}
+          eje={periodo} exportacion />,
+      };
+    }),
   };
 }
 
@@ -310,9 +335,7 @@ export function ReporteriaDecano() {
     item.asignaturas
       .filter(
         (fila) =>
-          dentroDeAnio(fila.anio_medicion) &&
-          fila.estado_dato === 'INFORMADO' &&
-          fila.tasa_reprobacion !== null,
+          dentroDeAnio(fila.anio_medicion),
       )
       .map((fila) => ({
         ...identificarCarrera(item),
@@ -321,6 +344,7 @@ export function ReporteriaDecano() {
         Semestre: fila.semestre,
         'Año de medición': fila.anio_medicion,
         'Tasa de reprobación (%)': fila.tasa_reprobacion,
+        'Estado del dato': fila.estado_dato ?? 'Sin datos',
       })),
   );
 
@@ -346,7 +370,7 @@ export function ReporteriaDecano() {
             { llave: 'Ingresos especiales', etiqueta: 'Especiales' },
             { llave: 'Ingresos totales', etiqueta: 'Total' },
           ],
-          datosIngresos,
+          datosIngresos, INDICADORES_INGRESOS,
         ),
         crearModuloTabla(
           'reporteria-decano-matricula',
@@ -360,7 +384,7 @@ export function ReporteriaDecano() {
             { llave: 'Matrícula mujeres', etiqueta: 'Mujeres' },
             { llave: 'Mujeres (%)', etiqueta: 'Mujeres', porcentaje: true },
           ],
-          datosMatricula,
+          datosMatricula, INDICADORES_MATRICULA,
         ),
         crearModuloTabla(
           'reporteria-decano-retencion',
@@ -376,7 +400,7 @@ export function ReporteriaDecano() {
             { llave: 'Retención 4to año', etiqueta: '4to año', porcentaje: true },
             { llave: 'Retención total', etiqueta: 'Total', porcentaje: true },
           ],
-          datosRetencion,
+          datosRetencion, INDICADORES_RETENCION,
         ),
         crearModuloTabla(
           'reporteria-decano-titulacion',
@@ -391,7 +415,7 @@ export function ReporteriaDecano() {
             { llave: 'Titulación efectiva (TTE)', etiqueta: 'TTE', porcentaje: true },
             { llave: 'Duración real (semestres)', etiqueta: 'Duración' },
           ],
-          datosTitulacion,
+          datosTitulacion, INDICADORES_TITULACION,
         ),
         crearModuloTabla(
           'reporteria-decano-eficiencia',
@@ -407,7 +431,7 @@ export function ReporteriaDecano() {
             { llave: 'Alta', etiqueta: 'Alta' },
             { llave: 'Eficiente', etiqueta: 'Eficiente' },
           ],
-          datosEficiencia,
+          datosEficiencia, INDICADORES_EFICIENCIA, 'eficiencia',
         ),
         crearModuloTabla(
           'reporteria-decano-avance',
@@ -431,7 +455,7 @@ export function ReporteriaDecano() {
             },
             { llave: 'Título (%)', etiqueta: 'Título', porcentaje: true },
           ],
-          datosAvance,
+          datosAvance, COLUMNAS_AVANCE, 'avance',
         ),
         crearModuloTabla(
           'reporteria-decano-asignaturas',
@@ -450,7 +474,7 @@ export function ReporteriaDecano() {
               porcentaje: true,
             },
           ],
-          datosAsignaturas,
+          datosAsignaturas, INDICADORES_ASIGNATURA, 'asignaturas',
         ),
       ];
 
@@ -483,7 +507,7 @@ export function ReporteriaDecano() {
   };
 
   const cantidadCarreras = codigosActivos.size;
-  const filtrosActivos = `${
+  const filtrosActivos = `${facultad} · ${
     alcance === 'FACULTAD' ? 'Facultad' : `${cantidadCarreras} carreras`
   } · C ${cohorteDesde ?? '—'}-${cohorteHasta ?? '—'} · A ${anioDesde ?? '—'}-${
     anioHasta ?? '—'
@@ -630,7 +654,7 @@ export function ReporteriaDecano() {
       reportTitle="Reportería Decanato"
       activeFilters={filtrosActivos}
       etiqueta="DECANATO"
-      subtitulo="Genera un PDF con datos reales de las carreras pertenecientes a la facultad y los indicadores que selecciones."
+      subtitulo="Elige indicadores y su presentación: tabla, gráfico o ambos. Los gráficos se separan por carrera, sin promedios de facultad."
       modulos={modulos}
       configuracion={configuracion}
       formatosDisponibles={['pdf']}

@@ -10,7 +10,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { SIN_DATOS, type FilaEficiencia } from '../data/curricular';
+
+interface FilaEficiencia {
+  cohorte: number;
+  nivel_baja: number | null;
+  nivel_media: number | null;
+  nivel_alta: number | null;
+  nivel_eficiente: number | null;
+}
 
 interface Props {
   data: FilaEficiencia[];
@@ -60,7 +67,7 @@ export function EficienciaCurricular({
 
       {filas.length === 0 && (
         <div className="flex min-h-[300px] flex-1 items-center justify-center text-center">
-          <span className="text-sm font-medium text-slate-500">{SIN_DATOS}</span>
+          <span className="text-sm font-medium text-slate-500">Sin datos para la selección actual.</span>
         </div>
       )}
 

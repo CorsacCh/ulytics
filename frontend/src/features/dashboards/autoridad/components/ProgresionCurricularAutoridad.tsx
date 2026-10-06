@@ -5,8 +5,8 @@ import { obtenerCatalogoCarreras, type CatalogoCarrera } from '../api';
 import { AutoridadSelectors } from './AutoridadSelectors';
 import { DataCardView } from '../../components/DataCardView';
 import { formatearValorCurricular, pivotarAsignaturasPorAnio } from '../../../../shared/utils/formatters';
-import { AvanceCicloFormativo } from '../../director/components/AvanceCicloFormativo';
-import { EficienciaCurricular } from '../../director/components/EficienciaCurricular';
+import { AvanceCicloFormativo } from '../../components/AvanceCicloFormativo';
+import { EficienciaCurricular } from '../../components/EficienciaCurricular';
 import type { FilaAvanceCurricular, FilaEficiencia } from '../../director/data/curricular';
 
 // Datos estáticos de demostración con la misma forma que entrega la API:

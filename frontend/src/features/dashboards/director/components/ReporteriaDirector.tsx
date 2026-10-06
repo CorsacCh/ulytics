@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { ApiError, apiRequest } from '../../../auth/api';
 import { useAuth } from '../../../auth/AuthContext';
 import { ReporteriaView, type ModuloReporteria } from '../../components/ReporteriaView';
-import { AvanceCicloFormativo } from './AvanceCicloFormativo';
-import { EficienciaCurricular } from './EficienciaCurricular';
+import { AvanceCicloFormativo } from '../../components/AvanceCicloFormativo';
+import { EficienciaCurricular } from '../../components/EficienciaCurricular';
 import { EvolucionRetencion } from './EvolucionRetencion';
 import { TablaPeriodos } from './ProgresionAnalitica';
 import {
