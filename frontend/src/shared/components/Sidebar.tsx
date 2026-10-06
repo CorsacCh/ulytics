@@ -8,7 +8,6 @@ export type Section =
   | 'Progresión analítica' 
   | 'Progresión curricular' 
   | 'Reportería'
-  | 'Dashboard' 
   | 'Períodos académicos' 
   | 'Cargas de datos' 
   | 'Usuarios y permisos' 
