@@ -3,6 +3,8 @@ import { Landmark } from 'lucide-react';
 import { facultadesOptions, carrerasOptions, type OpcionCarrera, type OpcionFacultad } from '../data/institucionData';
 import { AutoridadSelectors } from './AutoridadSelectors';
 import { DataCardView } from '../../components/DataCardView';
+import { RangoPeriodos } from '../../components/RangoPeriodos';
+import { enRango, type RangoPeriodo } from '../../components/series';
 import { obtenerCatalogoInstitucional } from '../api';
 import { obtenerCurricularCarrera, type RespuestaCurricular } from '../../decano/api';
 import { AvanceCicloFormativo } from '../../components/AvanceCicloFormativo';
@@ -29,7 +31,11 @@ export function ProgresionCurricularAutoridad() {
     setSelectedCarrera(null);
   };
 
-  const handleCarreraChange = (id: string) => setSelectedCarrera(id);
+  const handleCarreraChange = (id: string) => {
+    setSelectedCarrera(id);
+    setRangoCohorte(['todos', 'todos']);
+    setRangoAnio(['todos', 'todos']);
+  };
 
   // Catálogo real del backend (GET /api/ambitos). Mientras carga o si la API
   // falla, los selectores degradan a los mocks estáticos de institucionData.
@@ -91,6 +97,8 @@ export function ProgresionCurricularAutoridad() {
   const [respuesta, setRespuesta] = useState<RespuestaCurricular | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rangoCohorte, setRangoCohorte] = useState<RangoPeriodo>(['todos', 'todos']);
+  const [rangoAnio, setRangoAnio] = useState<RangoPeriodo>(['todos', 'todos']);
 
   useEffect(() => {
     if (!carCodigo) {
@@ -171,6 +179,15 @@ export function ProgresionCurricularAutoridad() {
     },
   }));
 
+  const cohortesDisponibles = [...new Set([...eficienciaHistorica.map((fila) => fila.cohorte),
+    ...avanceHistorico.map((fila) => fila.cohorte)])].sort((a, b) => a - b);
+  const aniosDisponibles = [...new Set(criticasHistoricas.map((fila) => fila.anio_medicion))].sort((a, b) => a - b);
+  const filasEficienciaFiltradas = filasEficiencia.filter((fila) => enRango(fila.periodo, rangoCohorte));
+  const filasAvanceFiltradas = filasAvance.filter((fila) => enRango(fila.periodo, rangoCohorte));
+  const eficienciaFiltrada = eficienciaHistorica.filter((fila) => enRango(fila.cohorte, rangoCohorte));
+  const avanceFiltrado = avanceHistorico.filter((fila) => enRango(fila.cohorte, rangoCohorte));
+  const criticasFiltradas = criticasHistoricas.filter((fila) => enRango(fila.anio_medicion, rangoAnio));
+
   return (
     <div className="mx-auto max-w-[1440px] space-y-10 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
       
@@ -196,6 +213,12 @@ export function ProgresionCurricularAutoridad() {
         onFacultadChange={handleFacultadChange}
         onCarreraChange={handleCarreraChange}
       />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <RangoPeriodos etiqueta="Cohorte" opciones={cohortesDisponibles} valor={rangoCohorte} onChange={setRangoCohorte} disabled={cargando} />
+        <RangoPeriodos etiqueta="Año de medición" opciones={aniosDisponibles} valor={rangoAnio} onChange={setRangoAnio} disabled={cargando} />
+      </div>
+      <p className="text-xs text-slate-500">Cohorte filtra eficiencia y avance; año de medición filtra asignaturas. Son independientes.</p>
 
       {/* CONTENEDOR DE DATOS DINÁMICOS */}
       <div className="space-y-6">
@@ -233,14 +256,14 @@ export function ProgresionCurricularAutoridad() {
             <DataCardView
               title="Cantidad de estudiantes por tramo de eficiencia"
               description="Distribución de estudiantes de cada cohorte según su tramo de eficiencia."
-              chartComponent={<EficienciaCurricular data={eficienciaHistorica} mostrarCabecera={false} />}
+              chartComponent={<EficienciaCurricular data={eficienciaFiltrada} mostrarCabecera={false} />}
               tableComponent={
                 <TablaIndicadores
                   titulo="Cantidad de estudiantes por tramo de eficiencia"
                   descripcion="Número de estudiantes de cada cohorte según su tramo de eficiencia curricular."
                   cabeceraIndicador="Indicador / Cohorte"
                   indicadores={INDICADORES_EFICIENCIA}
-                  filas={filasEficiencia}
+                  filas={filasEficienciaFiltradas}
                   mostrarCabecera={false}
                 />
               }
@@ -249,13 +272,13 @@ export function ProgresionCurricularAutoridad() {
             <DataCardView
               title="Estado de avance por ciclo formativo"
               description="Porcentaje de alumnos regulares y su cumplimiento esperado por ciclo."
-              chartComponent={<AvanceCicloFormativo data={avanceHistorico} mostrarCabecera={false} />}
+              chartComponent={<AvanceCicloFormativo data={avanceFiltrado} mostrarCabecera={false} />}
               tableComponent={
                 <TablaAvance
                   titulo="Estado de avance por ciclo formativo"
                   descripcion="Porcentaje de alumnos regulares de cada cohorte en las cinco categorías de avance curricular."
                   columnas={COLUMNAS_AVANCE}
-                  filas={filasAvance}
+                  filas={filasAvanceFiltradas}
                   mostrarCabecera={false}
                 />
               }
@@ -264,7 +287,7 @@ export function ProgresionCurricularAutoridad() {
             <TablaAsignaturasCriticas
               titulo="Asignaturas informadas en la carga"
               descripcion="Códigos, semestres y tasas informados en el archivo de origen, sin aplicar una clasificación adicional."
-              filas={criticasHistoricas}
+              filas={criticasFiltradas}
               mensajeVacio="Todavía no hay asignaturas informadas para esta carrera."
             />
           </div>

@@ -14,12 +14,6 @@ import { obtenerResumenInstitucional } from './api';
 import { autoridadHomeData as fallbackData } from './data/homeData';
 import type { AutoridadHomeData } from './data/homeData';
 
-const ALERTA_ESTILOS: Record<AutoridadHomeData['alertas'][number]['tipo'], { badge: string; icono: string }> = {
-  critica: { badge: 'bg-amber-100 text-amber-600', icono: '!' },
-  positiva: { badge: 'bg-emerald-100 text-emerald-600', icono: '✓' },
-  informativa: { badge: 'bg-blue-100 text-blue-600', icono: 'i' },
-};
-
 // Paleta corporativa monocromática para el donut de distribución por facultad.
 const COLORES_FACULTAD = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
 
@@ -69,7 +63,7 @@ export default function DashboardAutoridad() {
         return <ReporteriaAutoridad />;
       case 'Home':
       default: {
-        const { kpis, alertas, graficos } = data;
+        const { kpis, graficos } = data;
         return (
           <div className="mx-auto max-w-[1440px] space-y-8 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
             <DashboardHeader title="Reporte Institucional" subtitle="NIVEL CENTRAL · AUTORIDAD" />
@@ -238,26 +232,7 @@ export default function DashboardAutoridad() {
                   </ResponsiveContainer>
                 </article>
 
-                {/* Resumen Ejecutivo */}
-                <article className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-slate-800 mb-4">Puntos de Atención Institucional</h3>
-                  {alertas.length > 0 ? (
-                    <ul className="space-y-4">
-                      {alertas.map((alerta) => (
-                        <li key={alerta.mensaje} className="flex items-start gap-3 text-sm">
-                          <span
-                            className={`flex-shrink-0 mt-0.5 flex size-5 items-center justify-center rounded-full font-bold ${ALERTA_ESTILOS[alerta.tipo].badge}`}
-                          >
-                            {ALERTA_ESTILOS[alerta.tipo].icono}
-                          </span>
-                          <span className="text-slate-700">{alerta.mensaje}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-slate-500">Sin alertas institucionales activas.</p>
-                  )}
-                </article>
+
               </div>
             </section>
           </div>

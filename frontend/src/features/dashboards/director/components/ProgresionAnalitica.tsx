@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ApiError, apiRequest } from '../../../auth/api';
 import { useAuth } from '../../../auth/AuthContext';
 import { DataCardView } from '../../components/DataCardView';
+import { RangoPeriodos } from '../../components/RangoPeriodos';
+import { enRango, type RangoPeriodo } from '../../components/series';
 import { EvolucionRetencion } from './EvolucionRetencion';
 import {
   INDICADORES_INGRESOS,
@@ -165,6 +167,8 @@ export function ProgresionAnalitica() {
   const [carrera, setCarrera] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rangoCohorte, setRangoCohorte] = useState<RangoPeriodo>(['todos', 'todos']);
+  const [rangoAnio, setRangoAnio] = useState<RangoPeriodo>(['todos', 'todos']);
 
   useEffect(() => {
     if (!carCodigo) {
@@ -197,6 +201,8 @@ export function ProgresionAnalitica() {
         setMatriculaData(respuestaMatricula.matricula_anual ?? []);
         setProgresionData(respuestaProgresion.datos ?? []);
         setCarrera(respuestaMatricula.carrera || respuestaProgresion.carrera || '');
+        setRangoCohorte(['todos', 'todos']);
+        setRangoAnio(['todos', 'todos']);
       } catch (err) {
         if (!activo) return;
         setIngresoData([]);
@@ -251,6 +257,32 @@ export function ProgresionAnalitica() {
     },
   }));
 
+  // Rango de cohortes (aplica a Retención/Titulación/Eficiencia/Avance) y rango
+  // de años de medición (aplica a Matrícula/Asignaturas). Se derivan de los datos
+  // cargados: mientras no haya respuesta, los controles quedan inactivos.
+  const cohortesDisponibles = [...new Set([
+    ...ingresoData.map((fila) => fila.cohorte),
+    ...progresionData.map((fila) => fila.cohorte),
+  ])].sort((a, b) => a - b);
+  const aniosDisponibles = [...new Set(matriculaData.map((fila) => fila.anio_medicion))].sort((a, b) => a - b);
+
+  const filasIngresoFiltradas = filasIngreso.filter((fila) => enRango(fila.periodo, rangoCohorte));
+  const filasMatriculaFiltradas = filasMatricula.filter((fila) => enRango(fila.periodo, rangoAnio));
+  const filasProgresionFiltradas = filasProgresion.filter((fila) => enRango(fila.periodo, rangoCohorte));
+
+  // El gráfico reutiliza la misma serie filtrada: recibe `datos` para no
+  // autoconsultar la API con datos sin filtrar.
+  const evolucionRetencionFiltrada = progresionData
+    .filter((fila) => enRango(fila.cohorte, rangoCohorte))
+    .map((fila) => ({
+      cohorte: String(fila.cohorte),
+      retencion1erAno: fila.retencion_a1,
+      retencion2doAno: fila.retencion_a2,
+      retencion3erAno: fila.retencion_a3,
+      retencion4toAno: fila.retencion_a4,
+      retencionTotal: fila.retencion_total,
+    }));
+
   return (
     <div className="mx-auto max-w-[1440px] space-y-10 p-5 sm:p-8 lg:p-10 bg-[#F8FAFC] min-h-screen">
       {/* HEADER INSTITUCIONAL */}
@@ -266,6 +298,26 @@ export function ProgresionAnalitica() {
           </p>
         </div>
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <RangoPeriodos
+          etiqueta="Cohorte"
+          opciones={cohortesDisponibles}
+          valor={rangoCohorte}
+          onChange={setRangoCohorte}
+          disabled={loading}
+        />
+        <RangoPeriodos
+          etiqueta="Año de medición"
+          opciones={aniosDisponibles}
+          valor={rangoAnio}
+          onChange={setRangoAnio}
+          disabled={loading}
+        />
+      </div>
+      <p className="text-xs text-slate-500">
+        Cohorte filtra ingresos, retención y titulación; año de medición filtra matrícula. Son independientes.
+      </p>
 
       {loading && (
         <div
@@ -296,13 +348,13 @@ export function ProgresionAnalitica() {
             <DataCardView
               title="Evolución Longitudinal de Retención"
               description="Porcentaje de retención por cohorte a lo largo de los años."
-              chartComponent={<EvolucionRetencion mostrarCabecera={false} />}
+              chartComponent={<EvolucionRetencion datos={evolucionRetencionFiltrada} mostrarCabecera={false} />}
               tableComponent={
                 <TablaPeriodos
                   titulo="Cohortes / Tasas de retención"
                   descripcion="Porcentaje de estudiantes que permanecen en la carrera según año de ingreso."
                   indicadores={INDICADORES_RETENCION}
-                  filas={filasProgresion}
+                  filas={filasProgresionFiltradas}
                   mostrarCabecera={false}
                 />
               }
@@ -315,7 +367,7 @@ export function ProgresionAnalitica() {
               titulo="Ingresos por cohorte"
               descripcion="Cantidades informadas por vía de admisión para cada cohorte de ingreso."
               indicadores={INDICADORES_INGRESOS}
-              filas={filasIngreso}
+              filas={filasIngresoFiltradas}
             />
           </div>
 
@@ -324,7 +376,7 @@ export function ProgresionAnalitica() {
               titulo="Matrícula anual"
               descripcion="Matrícula total y participación de mujeres para cada año de medición."
               indicadores={INDICADORES_MATRICULA}
-              filas={filasMatricula}
+              filas={filasMatriculaFiltradas}
             />
           </div>
 
@@ -334,7 +386,7 @@ export function ProgresionAnalitica() {
               titulo="Titulación y tiempo de egreso"
               descripcion="Tasas de titulación y duración real registradas para cada cohorte."
               indicadores={INDICADORES_TITULACION}
-              filas={filasProgresion}
+              filas={filasProgresionFiltradas}
             />
           </div>
         </div>

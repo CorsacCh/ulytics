@@ -60,7 +60,7 @@ export function ReporteriaView({
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
   const [exportando, setExportando] = useState<FormatoExportable | null>(null);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
-  const [vistasPdf, setVistasPdf] = useState<Record<string, VistaPDF>>({});
+  const [vistasPdf] = useState<Record<string, VistaPDF>>({});
   const [capturas, setCapturas] = useState<ModuloPresentable[]>([]);
 
   const cantidadSeleccionadosDisponibles = modulos.filter((modulo) =>
@@ -206,17 +206,7 @@ export function ReporteriaView({
                           />
                           <span className="font-medium text-slate-700">{modulo.label}</span>
                         </label>
-                        {modulo.seccionesPdf && (
-                          <select aria-label={`Presentación PDF de ${modulo.label}`}
-                            disabled={!seleccionados.includes(modulo.id)}
-                            value={vistasPdf[modulo.id] ?? 'tabla'}
-                            onChange={(event) => setVistasPdf((actual) => ({ ...actual, [modulo.id]: event.target.value as VistaPDF }))}
-                            className="rounded border border-slate-300 bg-white p-2 text-sm disabled:opacity-50">
-                            <option value="tabla">Tabla</option>
-                            <option value="grafico">Gráfico</option>
-                            <option value="ambos">Ambos</option>
-                          </select>
-                        )}
+
                         {/* BADGE UX: identifica de un vistazo el tipo de vista */}
                         {modulo.tipoVista && (
                           <span
